@@ -1,98 +1,252 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import * as DocumentPicker from 'expo-document-picker';
+import { File } from 'expo-file-system';
+import { Link, useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
+import {
+  Alert,
+  FlatList,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { Button } from '@/components/Button';
+import { createDeck, DeckWithCounts, listDecksWithCounts } from '@/db/decks';
+import { exportAllToFile, importFromText, shareBackup } from '@/lib/backup';
+import { colors, radius, spacing } from '@/theme';
 
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
-  return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
+export default function DecksScreen() {
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const [decks, setDecks] = useState<DeckWithCounts[]>([]);
+  const [newName, setNewName] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [backupBusy, setBackupBusy] = useState(false);
+  const [restoreBusy, setRestoreBusy] = useState(false);
+
+  const load = useCallback(() => {
+    listDecksWithCounts().then(setDecks).catch(console.error);
+  }, []);
+
+  // Reload whenever the screen regains focus so counts stay current.
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load])
   );
-}
 
-export default function HomeScreen() {
+  async function handleCreate() {
+    const name = newName.trim();
+    if (!name || loading) return;
+    setLoading(true);
+    try {
+      const id = await createDeck(name);
+      setNewName('');
+      load();
+      router.push(`/deck/${id}`);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleBackup() {
+    if (backupBusy) return;
+    setBackupBusy(true);
+    try {
+      const { uri, deckCount } = await exportAllToFile();
+      if (deckCount === 0) {
+        Alert.alert('Nothing to back up', 'Create a deck or add some cards first.');
+        return;
+      }
+      const shared = await shareBackup(uri);
+      if (!shared) {
+        Alert.alert('Backup ready', `Saved to:\n${uri}`);
+      }
+    } catch (e) {
+      console.error(e);
+      Alert.alert('Backup failed', 'Could not create the backup file.');
+    } finally {
+      setBackupBusy(false);
+    }
+  }
+
+  async function handleRestore() {
+    if (restoreBusy) return;
+    setRestoreBusy(true);
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['application/json', 'text/plain', '*/*'],
+        copyToCacheDirectory: true,
+      });
+      if (result.canceled || !result.assets?.[0]) return;
+
+      const text = await new File(result.assets[0].uri).text();
+      const { deckCount, cardCount } = await importFromText(text);
+      load();
+      Alert.alert(
+        'Restore complete',
+        `Added ${deckCount} ${deckCount === 1 ? 'deck' : 'decks'} and ${cardCount} ${
+          cardCount === 1 ? 'card' : 'cards'
+        }.`
+      );
+    } catch (e) {
+      console.error(e);
+      Alert.alert('Restore failed', 'That file is not a valid flashcards backup.');
+    } finally {
+      setRestoreBusy(false);
+    }
+  }
+
   return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
-          </ThemedText>
-        </ThemedView>
+    <View style={styles.container}>
+      <View style={styles.newRow}>
+        <TextInput
+          style={styles.input}
+          placeholder="New deck name"
+          placeholderTextColor={colors.textMuted}
+          value={newName}
+          onChangeText={setNewName}
+          onSubmitEditing={handleCreate}
+          returnKeyType="done"
+        />
+        <Button title="Add" onPress={handleCreate} disabled={!newName.trim()} loading={loading} />
+      </View>
 
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
-
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
-          />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
-
-        {Platform.OS === 'web' && <WebBadge />}
-      </SafeAreaView>
-    </ThemedView>
+      <FlatList
+        data={decks}
+        keyExtractor={(d) => String(d.id)}
+        contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + spacing.xl }]}
+        ListEmptyComponent={
+          <Text style={styles.empty}>No decks yet. Create one above to get started.</Text>
+        }
+        ListFooterComponent={
+          <View style={styles.dataFooter}>
+            <Text style={styles.dataLabel}>Data</Text>
+            <View style={styles.dataRow}>
+              <Button
+                title="Back up"
+                variant="secondary"
+                style={styles.flex1}
+                onPress={handleBackup}
+                loading={backupBusy}
+              />
+              <Button
+                title="Restore"
+                variant="secondary"
+                style={styles.flex1}
+                onPress={handleRestore}
+                loading={restoreBusy}
+              />
+            </View>
+          </View>
+        }
+        renderItem={({ item }) => (
+          <Link href={`/deck/${item.id}`} asChild>
+            <Pressable style={({ pressed }) => [styles.deckRow, pressed && styles.pressed]}>
+              <View style={styles.deckTextWrap}>
+                <Text style={styles.deckName} numberOfLines={1}>
+                  {item.name}
+                </Text>
+                <Text style={styles.deckMeta}>
+                  {item.total} {item.total === 1 ? 'card' : 'cards'}
+                </Text>
+              </View>
+              <View style={styles.dueBadge}>
+                <Text style={styles.dueNumber}>{item.due}</Text>
+                <Text style={styles.dueLabel}>due</Text>
+              </View>
+            </Pressable>
+          </Link>
+        )}
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
+    padding: spacing.md,
+  },
+  newRow: {
     flexDirection: 'row',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
   },
-  safeArea: {
+  input: {
     flex: 1,
-    paddingHorizontal: Spacing.four,
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    fontSize: 16,
+    color: colors.text,
   },
-  heroSection: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
+  listContent: {
+    gap: spacing.sm,
+    paddingBottom: spacing.xl,
   },
-  title: {
+  flex1: { flex: 1 },
+  dataFooter: {
+    marginTop: spacing.xl,
+    gap: spacing.sm,
+  },
+  dataLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.textMuted,
+  },
+  dataRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  empty: {
     textAlign: 'center',
+    color: colors.textMuted,
+    marginTop: spacing.xl,
+    fontSize: 15,
   },
-  code: {
-    textTransform: 'uppercase',
+  deckRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    padding: spacing.md,
   },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
+  pressed: {
+    opacity: 0.7,
+  },
+  deckTextWrap: {
+    flex: 1,
+    marginRight: spacing.md,
+  },
+  deckName: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  deckMeta: {
+    marginTop: 2,
+    fontSize: 13,
+    color: colors.textMuted,
+  },
+  dueBadge: {
+    minWidth: 52,
+    alignItems: 'center',
+  },
+  dueNumber: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.primary,
+  },
+  dueLabel: {
+    fontSize: 12,
+    color: colors.textMuted,
   },
 });

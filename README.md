@@ -1,56 +1,77 @@
-# Welcome to your Expo app 👋
+# Flashcards
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A simple personal flashcard app (Expo / React Native, Android). Create decks, add cards
+manually or via CSV import, and practice with lightweight spaced repetition. All data is
+stored locally on the device in SQLite — no accounts, no internet required.
 
-## Get started
+## Features
 
-1. Install dependencies
+- Multiple named decks.
+- Add cards manually (front / back) or bulk-import from a CSV file.
+- Practice mode: up to 10 due cards per batch, flip to reveal, rate **Hard / Fine / Easy**.
+  - **Hard** → card stays due (unlearned).
+  - **Fine** → learned for 1 day.
+  - **Easy** → learned for 1 week.
+  - When a learned card's timer passes, it automatically becomes due again.
+- Session summary after each batch, with the option to practice the next 10.
 
-   ```bash
-   npm install
-   ```
+## CSV import format
 
-2. Start the app
+Semicolon-delimited `front;back`, **one card per line, no header row**:
 
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```
+hola;hello
+gato;cat
+buenos días;good morning
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+- Each line is split on the **first** `;`, so the back may itself contain semicolons.
+- Blank lines and lines without a `;` are skipped.
 
-### Other setup steps
+## Run it during development
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+```bash
+npm install            # first time only
+npx expo start         # then scan the QR code with the Expo Go app on your Android phone
+```
 
-## Learn more
+Press `a` to open in an Android emulator if you have Android Studio set up.
 
-To learn more about developing your project with Expo, look at the following resources:
+## Build a standalone APK (install permanently, no PC needed)
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+Uses [EAS Build](https://docs.expo.dev/build/introduction/) (free tier, builds in the cloud):
 
-## Join the community
+```bash
+npm install -g eas-cli
+eas login              # create / sign in to a free Expo account
+eas build -p android --profile preview
+```
 
-Join our community of developers creating universal apps.
+When the build finishes, EAS gives you a download link for an `.apk`. Open that link on your
+phone and install it. Data persists across restarts.
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## Project layout
+
+```
+src/
+  app/                         expo-router screens
+    _layout.tsx                root Stack navigator
+    index.tsx                  decks list (create deck, see due counts)
+    deck/[id]/index.tsx        deck detail (stats, practice, add card, import CSV, rename/delete)
+    deck/[id]/card.tsx         add / edit a single card (?cardId=... to edit)
+    deck/[id]/practice.tsx     practice batch + session summary
+  db/
+    database.ts                opens SQLite, creates schema
+    decks.ts                   deck queries
+    cards.ts                   card queries + spaced-repetition rules (due_at)
+  lib/csv.ts                   semicolon CSV parser
+  components/Button.tsx        shared button
+  theme.ts                     colors / spacing
+```
+
+### How "learned vs. due" works
+
+Each card has a `due_at` timestamp (epoch ms). A card is **due / unlearned** when
+`due_at <= now`. New and imported cards start at `due_at = 0` (immediately due). Rating a
+card updates `due_at` (now / +1 day / +1 week). This single field drives both the practice
+filter and the automatic return of expired cards — no background job is needed.
