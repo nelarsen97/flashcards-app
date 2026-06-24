@@ -19,8 +19,8 @@ export type FamiliarityLevel = 'hard' | 'close' | 'fine' | 'easy';
 const DAY_MS = 24 * 60 * 60 * 1000;
 const WEEK_MS = 7 * DAY_MS;
 
-/** Maps a familiarity level to the next due_at, relative to `now`. */
-function nextDueAt(level: FamiliarityLevel, now: number): number {
+/** Maps a familiarity level to the next due_at, relative to `now`. Exported for unit tests. */
+export function nextDueAt(level: FamiliarityLevel, now: number): number {
   switch (level) {
     case 'hard':
       return now; // stays due / unlearned

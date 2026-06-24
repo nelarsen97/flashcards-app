@@ -16,6 +16,9 @@ before writing code. Add native modules with `npx expo install`, not `npm instal
 ## Commands
 - `npx expo start` — dev (`a` for Android emulator).
 - `npm run lint`, `npx tsc --noEmit` — run both before finishing a change.
+- `npm test` — Jest (`jest-expo`). Tests live in `src/**/__tests__`; the data
+  layer runs against an in-memory SQLite (`__mocks__/expo-sqlite.ts`). Note
+  RNTL v14 `render`/`fireEvent` are async — `await` them.
 
 ## Conventions
 - Use theme tokens from `src/theme.ts` (`colors`/`spacing`/`radius`); don't hard-code.
