@@ -118,6 +118,7 @@ export default function DecksScreen() {
       <FlatList
         data={decks}
         keyExtractor={(d) => String(d.id)}
+        style={styles.list}
         contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + spacing.xl }]}
         ListEmptyComponent={
           <Text style={styles.empty}>No decks yet. Create one above to get started.</Text>
@@ -185,6 +186,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     fontSize: 16,
     color: colors.text,
+  },
+  list: {
+    flex: 1,
   },
   listContent: {
     gap: spacing.sm,

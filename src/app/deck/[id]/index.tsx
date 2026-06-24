@@ -212,6 +212,7 @@ export default function DeckDetailScreen() {
       <FlatList
         data={cards}
         keyExtractor={(c) => String(c.id)}
+        style={styles.list}
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={<Text style={styles.empty}>No cards yet. Add one or import a CSV.</Text>}
         renderItem={({ item }) => {
@@ -340,6 +341,7 @@ const styles = StyleSheet.create({
   actions: { gap: spacing.sm, marginBottom: spacing.lg },
   actionRow: { flexDirection: 'row', gap: spacing.sm },
   sectionLabel: { fontSize: 14, fontWeight: '700', color: colors.textMuted, marginBottom: spacing.sm },
+  list: { flex: 1 },
   listContent: { gap: spacing.sm, paddingBottom: spacing.xl },
   empty: { textAlign: 'center', color: colors.textMuted, marginTop: spacing.lg },
   cardRow: {
