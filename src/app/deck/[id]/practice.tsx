@@ -32,11 +32,24 @@ export default function PracticeScreen() {
   const [index, setIndex] = useState(0);
   const [tally, setTally] = useState<Tally>(emptyTally);
   const [moreDue, setMoreDue] = useState(false);
-  // false = front showing, true = back showing. Drives the flip animation.
+  // false = front showing, true = back showing.
   const [showBack, setShowBack] = useState(false);
+  // Whether the next face change should animate. Tapping flips with animation;
+  // advancing to the next card resets to the front with no animation, so the
+  // flip-back never plays over the next card's text and spoil its answer.
+  const [animate, setAnimate] = useState(true);
 
-  // 0 = front, 1 = back. Animates whenever `showBack` changes.
-  const progress = useDerivedValue(() => withTiming(showBack ? 1 : 0, { duration: 250 }));
+  // 0 = front, 1 = back. Animates on tap, snaps instantly on card advance.
+  const progress = useDerivedValue(() => {
+    const target = showBack ? 1 : 0;
+    return animate ? withTiming(target, { duration: 250 }) : target;
+  });
+
+  // Tap to flip the current card, with animation.
+  const toggleFace = useCallback(() => {
+    setAnimate(true);
+    setShowBack((v) => !v);
+  }, []);
 
   const frontStyle = useAnimatedStyle(() => ({
     transform: [
@@ -56,6 +69,7 @@ export default function PracticeScreen() {
     const cards = await getDueCards(deckId, BATCH_SIZE);
     setBatch(cards);
     setIndex(0);
+    setAnimate(false);
     setShowBack(false);
     setTally(emptyTally);
     setPhase(cards.length === 0 ? 'summary' : 'practice');
@@ -78,7 +92,10 @@ export default function PracticeScreen() {
     setTally(nextTally);
 
     if (index + 1 < batch.length) {
-      setShowBack(false); // next card starts face-up
+      // Snap straight to the front of the next card — no flip animation, so the
+      // back never rotates into view over the new card's text.
+      setAnimate(false);
+      setShowBack(false);
       setIndex(index + 1);
     } else {
       // Batch finished — are there still due cards left for a next round?
@@ -137,7 +154,7 @@ export default function PracticeScreen() {
         {index + 1} / {batch.length}
       </Text>
 
-      <Pressable style={styles.cardContainer} onPress={() => setShowBack((v) => !v)}>
+      <Pressable style={styles.cardContainer} onPress={toggleFace}>
         <Animated.View style={[styles.face, frontStyle]}>
           <SpeakerButton text={card.front} language="nb-NO" style={styles.speaker} />
           <Text style={styles.faceText}>{card.front}</Text>
