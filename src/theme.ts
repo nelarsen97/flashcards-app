@@ -7,9 +7,10 @@ export const colors = {
   primary: '#2F6FED',
   primaryText: '#FFFFFF',
   danger: '#D6453D',
-  // Practice rating colors
+  // Familiarity level colors (red → green progression)
   hard: '#D6453D',
-  fine: '#E08C12',
+  close: '#E08C12',
+  fine: '#6E9A1F',
   easy: '#1F9D55',
 } as const;
 

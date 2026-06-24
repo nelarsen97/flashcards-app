@@ -10,20 +10,26 @@ export interface Card {
   created_at: number;
 }
 
-export type Rating = 'hard' | 'fine' | 'easy';
+/**
+ * The familiarity level a user assigns to a card during practice. Each level
+ * controls how long the card is removed from the deck's "unlearned" set.
+ */
+export type FamiliarityLevel = 'hard' | 'close' | 'fine' | 'easy';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const WEEK_MS = 7 * DAY_MS;
 
-/** Maps a practice rating to the next due_at, relative to `now`. */
-function nextDueAt(rating: Rating, now: number): number {
-  switch (rating) {
+/** Maps a familiarity level to the next due_at, relative to `now`. */
+function nextDueAt(level: FamiliarityLevel, now: number): number {
+  switch (level) {
     case 'hard':
       return now; // stays due / unlearned
+    case 'close':
+      return now + DAY_MS; // removed for 1 day
     case 'fine':
-      return now + DAY_MS;
+      return now + 4 * DAY_MS; // removed for 4 days
     case 'easy':
-      return now + WEEK_MS;
+      return now + WEEK_MS; // removed for 1 week
   }
 }
 
@@ -89,10 +95,10 @@ export async function getDueCards(deckId: number, limit: number): Promise<Card[]
   );
 }
 
-/** Apply a practice rating, updating the card's due_at. */
-export async function rateCard(id: number, rating: Rating): Promise<void> {
+/** Apply a familiarity level to a card, updating its due_at. */
+export async function rateCard(id: number, level: FamiliarityLevel): Promise<void> {
   const db = await getDb();
-  await db.runAsync('UPDATE cards SET due_at = ? WHERE id = ?', nextDueAt(rating, Date.now()), id);
+  await db.runAsync('UPDATE cards SET due_at = ? WHERE id = ?', nextDueAt(level, Date.now()), id);
 }
 
 /** Re-assign a set of cards to another deck. Card learned/due state is preserved. */

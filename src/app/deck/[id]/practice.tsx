@@ -10,15 +10,15 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
-import { Card, getDueCards, Rating, rateCard } from '@/db/cards';
+import { Card, FamiliarityLevel, getDueCards, rateCard } from '@/db/cards';
 import { colors, radius, spacing } from '@/theme';
 
 const BATCH_SIZE = 10;
 
 type Phase = 'loading' | 'practice' | 'summary';
-type Tally = { hard: number; fine: number; easy: number };
+type Tally = { hard: number; close: number; fine: number; easy: number };
 
-const emptyTally: Tally = { hard: 0, fine: 0, easy: 0 };
+const emptyTally: Tally = { hard: 0, close: 0, fine: 0, easy: 0 };
 
 export default function PracticeScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -68,12 +68,12 @@ export default function PracticeScreen() {
     loadBatch();
   }, [loadBatch]);
 
-  async function handleRate(rating: Rating) {
+  async function handleRate(level: FamiliarityLevel) {
     const card = batch[index];
     if (!card) return;
-    await rateCard(card.id, rating);
+    await rateCard(card.id, level);
 
-    const nextTally = { ...tally, [rating]: tally[rating] + 1 };
+    const nextTally = { ...tally, [level]: tally[level] + 1 };
     setTally(nextTally);
 
     if (index + 1 < batch.length) {
@@ -97,7 +97,7 @@ export default function PracticeScreen() {
   }
 
   if (phase === 'summary') {
-    const reviewed = tally.hard + tally.fine + tally.easy;
+    const reviewed = tally.hard + tally.close + tally.fine + tally.easy;
     return (
       <View style={[styles.container, { paddingBottom: insets.bottom + spacing.md }]}>
         <Stack.Screen options={{ title: 'Session summary' }} />
@@ -110,6 +110,7 @@ export default function PracticeScreen() {
           ) : (
             <View style={styles.summaryRow}>
               <SummaryStat label="Hard" value={tally.hard} color={colors.hard} />
+              <SummaryStat label="Close" value={tally.close} color={colors.close} />
               <SummaryStat label="Fine" value={tally.fine} color={colors.fine} />
               <SummaryStat label="Easy" value={tally.easy} color={colors.easy} />
             </View>
@@ -147,6 +148,7 @@ export default function PracticeScreen() {
 
       <View style={styles.ratingRow}>
         <Button title="Hard" color={colors.hard} style={styles.ratingBtn} onPress={() => handleRate('hard')} />
+        <Button title="Close" color={colors.close} style={styles.ratingBtn} onPress={() => handleRate('close')} />
         <Button title="Fine" color={colors.fine} style={styles.ratingBtn} onPress={() => handleRate('fine')} />
         <Button title="Easy" color={colors.easy} style={styles.ratingBtn} onPress={() => handleRate('easy')} />
       </View>
@@ -197,8 +199,8 @@ const styles = StyleSheet.create({
   },
   faceText: { fontSize: 24, fontWeight: '600', color: colors.text, textAlign: 'center' },
   tapHint: { position: 'absolute', bottom: spacing.lg, fontSize: 14, color: colors.textMuted },
-  ratingRow: { flexDirection: 'row', gap: spacing.sm },
-  ratingBtn: { flex: 1 },
+  ratingRow: { flexDirection: 'row', gap: spacing.xs },
+  ratingBtn: { flex: 1, paddingHorizontal: spacing.xs },
   summaryCard: {
     backgroundColor: colors.card,
     borderWidth: 1,

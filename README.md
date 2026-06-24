@@ -8,9 +8,11 @@ stored locally on the device in SQLite — no accounts, no internet required.
 
 - Multiple named decks.
 - Add cards manually (front / back) or bulk-import from a CSV file.
-- Practice mode: up to 10 due cards per batch, flip to reveal, rate **Hard / Fine / Easy**.
+- Practice mode: up to 10 due cards per batch, flip to reveal, then pick a
+  **familiarity level** — **Hard / Close / Fine / Easy**.
   - **Hard** → card stays due (unlearned).
-  - **Fine** → learned for 1 day.
+  - **Close** → learned for 1 day.
+  - **Fine** → learned for 4 days.
   - **Easy** → learned for 1 week.
   - When a learned card's timer passes, it automatically becomes due again.
 - Session summary after each batch, with the option to practice the next 10.
@@ -72,6 +74,7 @@ src/
 ### How "learned vs. due" works
 
 Each card has a `due_at` timestamp (epoch ms). A card is **due / unlearned** when
-`due_at <= now`. New and imported cards start at `due_at = 0` (immediately due). Rating a
-card updates `due_at` (now / +1 day / +1 week). This single field drives both the practice
-filter and the automatic return of expired cards — no background job is needed.
+`due_at <= now`. New and imported cards start at `due_at = 0` (immediately due). Choosing a
+familiarity level updates `due_at` (now / +1 day / +4 days / +1 week). This single field
+drives both the practice filter and the automatic return of expired cards — no background
+job is needed.
