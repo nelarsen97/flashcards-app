@@ -10,6 +10,7 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
+import { SpeakerButton } from '@/components/SpeakerButton';
 import { Card, FamiliarityLevel, getDueCards, rateCard } from '@/db/cards';
 import { colors, radius, spacing } from '@/theme';
 
@@ -138,10 +139,12 @@ export default function PracticeScreen() {
 
       <Pressable style={styles.cardContainer} onPress={() => setShowBack((v) => !v)}>
         <Animated.View style={[styles.face, frontStyle]}>
+          <SpeakerButton text={card.front} language="nb-NO" style={styles.speaker} />
           <Text style={styles.faceText}>{card.front}</Text>
           <Text style={styles.tapHint}>Tap to flip</Text>
         </Animated.View>
         <Animated.View style={[styles.face, styles.faceBack, backStyle]}>
+          <SpeakerButton text={card.back} language="en-US" style={styles.speaker} />
           <Text style={styles.faceText}>{card.back}</Text>
         </Animated.View>
       </Pressable>
@@ -197,6 +200,7 @@ const styles = StyleSheet.create({
   faceBack: {
     backgroundColor: colors.bg,
   },
+  speaker: { position: 'absolute', top: spacing.md, right: spacing.md },
   faceText: { fontSize: 24, fontWeight: '600', color: colors.text, textAlign: 'center' },
   tapHint: { position: 'absolute', bottom: spacing.lg, fontSize: 14, color: colors.textMuted },
   ratingRow: { flexDirection: 'row', gap: spacing.xs },
