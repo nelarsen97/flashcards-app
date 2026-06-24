@@ -238,15 +238,16 @@ const styles = StyleSheet.create({
   },
   dueBadge: {
     minWidth: 52,
-    alignItems: 'center',
   },
   dueNumber: {
     fontSize: 20,
     fontWeight: '700',
     color: colors.primary,
+    textAlign: 'center',
   },
   dueLabel: {
     fontSize: 12,
     color: colors.textMuted,
+    textAlign: 'center',
   },
 });

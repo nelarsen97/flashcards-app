@@ -219,7 +219,15 @@ const styles = StyleSheet.create({
   },
   speaker: { position: 'absolute', top: spacing.md, right: spacing.md },
   faceText: { fontSize: 24, fontWeight: '600', color: colors.text, textAlign: 'center' },
-  tapHint: { position: 'absolute', bottom: spacing.lg, fontSize: 14, color: colors.textMuted },
+  tapHint: {
+    position: 'absolute',
+    bottom: spacing.lg,
+    left: spacing.lg,
+    right: spacing.lg,
+    textAlign: 'center',
+    fontSize: 14,
+    color: colors.textMuted,
+  },
   ratingRow: { flexDirection: 'row', gap: spacing.xs },
   ratingBtn: { flex: 1, paddingHorizontal: spacing.xs },
   summaryCard: {
@@ -233,8 +241,8 @@ const styles = StyleSheet.create({
   summaryTitle: { fontSize: 20, fontWeight: '700', color: colors.text, textAlign: 'center' },
   summarySub: { fontSize: 15, color: colors.textMuted, textAlign: 'center', marginTop: spacing.sm },
   summaryRow: { flexDirection: 'row', marginTop: spacing.lg },
-  summaryStat: { flex: 1, alignItems: 'center' },
-  summaryValue: { fontSize: 28, fontWeight: '700' },
-  summaryLabel: { fontSize: 14, color: colors.textMuted, marginTop: 2 },
+  summaryStat: { flex: 1 },
+  summaryValue: { fontSize: 28, fontWeight: '700', textAlign: 'center' },
+  summaryLabel: { fontSize: 14, color: colors.textMuted, marginTop: 2, textAlign: 'center' },
   summaryActions: { gap: spacing.sm, marginTop: spacing.lg },
 });
