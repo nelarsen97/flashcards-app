@@ -1,9 +1,8 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Platform, StyleSheet, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
-  interpolate,
   runOnJS,
   useAnimatedStyle,
   useDerivedValue,
@@ -13,7 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
 import { SpeakerButton } from '@/components/SpeakerButton';
-import { Card, countDue, getDueCards, rateCard, Rating } from '@/db/cards';
+import { Card, getDueCards, rateCard, Rating } from '@/db/cards';
 import { colors, radius, spacing } from '@/theme';
 
 const BATCH_SIZE = 10;
@@ -34,6 +33,11 @@ export default function PracticeScreen() {
   const insets = useSafeAreaInsets();
 
   const [phase, setPhase] = useState<Phase>('loading');
+  // The session deck: due cards snapshotted once at session start, randomized,
+  // with the cards already dealt into batches removed. Each batch slices off the
+  // top, so a card shown this session never reappears — even if a rating leaves
+  // it due again. Exiting and re-entering rebuilds this from the DB.
+  const queue = useRef<Card[]>([]);
   const [batch, setBatch] = useState<Card[]>([]);
   const [index, setIndex] = useState(0);
   // The latest rating per batch index. Swiping back and re-rating overwrites the
@@ -43,69 +47,85 @@ export default function PracticeScreen() {
   // How many due cards are left after this batch — sizes the next round and its
   // button label (capped at BATCH_SIZE).
   const [remainingDue, setRemainingDue] = useState(0);
-  // false = front showing, true = back showing.
-  const [showBack, setShowBack] = useState(false);
+  // Number of half-turn flips so far. It only ever increases, so each tap spins
+  // the card forward in the same direction instead of unwinding back the way it
+  // came. Even = front showing, odd = back showing.
+  const [flip, setFlip] = useState(0);
+  const showBack = flip % 2 === 1;
   // Whether the next face change should animate. Tapping flips with animation;
   // advancing to the next card resets to the front with no animation, so the
   // flip-back never plays over the next card's text and spoil its answer.
   const [animate, setAnimate] = useState(true);
 
-  // 0 = front, 1 = back. Animates on tap, snaps instantly on card advance.
+  // Half-turns rotated. Animates toward `flip` on tap, snaps instantly on card
+  // advance. Each whole step is a 180° forward turn.
   const progress = useDerivedValue(() => {
-    const target = showBack ? 1 : 0;
-    return animate ? withTiming(target, { duration: 250 }) : target;
+    return animate ? withTiming(flip, { duration: 250 }) : flip;
   });
 
-  // Tap to flip the current card, with animation.
+  // Tap to flip the current card, with animation. Always advances forward so the
+  // card keeps spinning the same way rather than reversing.
   const toggleFace = useCallback(() => {
     setAnimate(true);
-    setShowBack((v) => !v);
+    setFlip((f) => f + 1);
   }, []);
 
   const frontStyle = useAnimatedStyle(() => ({
     transform: [
       { perspective: 1000 },
-      { rotateY: `${interpolate(progress.value, [0, 1], [0, 180])}deg` },
+      { rotateY: `${progress.value * 180}deg` },
     ],
   }));
   const backStyle = useAnimatedStyle(() => ({
     transform: [
       { perspective: 1000 },
-      { rotateY: `${interpolate(progress.value, [0, 1], [180, 360])}deg` },
+      { rotateY: `${progress.value * 180 + 180}deg` },
     ],
   }));
 
-  const loadBatch = useCallback(async () => {
-    setPhase('loading');
-    const cards = await getDueCards(deckId, BATCH_SIZE);
-    setBatch(cards);
+  // Deal the next cards off the top of the session deck. No DB query — the deck
+  // was snapshotted at session start, so a card already dealt never comes back.
+  const loadBatch = useCallback(() => {
+    const next = queue.current.slice(0, BATCH_SIZE);
+    queue.current = queue.current.slice(BATCH_SIZE);
+    setBatch(next);
+    setRemainingDue(queue.current.length);
     setIndex(0);
     setAnimate(false);
-    setShowBack(randomFace());
+    setFlip(randomFace() ? 1 : 0);
     setRatings({});
-    setPhase(cards.length === 0 ? 'summary' : 'practice');
-  }, [deckId]);
+    setPhase(next.length === 0 ? 'summary' : 'practice');
+  }, []);
 
   useEffect(() => {
-    // Intentional one-time fetch of the first batch on mount. The compiler lint
-    // can't tell this apart from a render-loop setState, but it is a deliberate
-    // data load, not derived state.
+    // Snapshot the due cards once for this session, then deal the first batch.
+    // The compiler lint can't tell this one-time data load apart from a
+    // render-loop setState, but it is deliberate, not derived state.
+    let cancelled = false;
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    loadBatch();
-  }, [loadBatch]);
+    setPhase('loading');
+    getDueCards(deckId).then((cards) => {
+      if (cancelled) return;
+      queue.current = cards;
+      loadBatch();
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [deckId, loadBatch]);
 
-  // End the session and show the summary, sizing the "practice more" prompt.
-  const endSession = useCallback(async () => {
-    setRemainingDue(await countDue(deckId));
+  // End the session and show the summary. `remainingDue` was set when this batch
+  // was dealt and the session deck doesn't grow mid-batch, so it's already right.
+  const endSession = useCallback(() => {
     setPhase('summary');
-  }, [deckId]);
+  }, []);
 
   // Move to a card without rating it. Swiping is pure navigation: it never touches
   // familiarity and never writes to the DB. Snap to the new card's starting face
   // with no flip animation, so the old face never rotates into view over its text.
   const goTo = useCallback((target: number) => {
     setAnimate(false);
-    setShowBack(randomFace());
+    setFlip(randomFace() ? 1 : 0);
     setIndex(target);
   }, []);
   // Swiping forward past the last card skips it (no rating) and ends the session;
@@ -141,11 +161,11 @@ export default function PracticeScreen() {
       // Snap straight to the next card's starting face — no flip animation, so
       // the other face never rotates into view over the new card's text.
       setAnimate(false);
-      setShowBack(randomFace());
+      setFlip(randomFace() ? 1 : 0);
       setIndex(index + 1);
     } else {
       // Rating the last card finishes the batch.
-      await endSession();
+      endSession();
     }
   }
 
@@ -285,7 +305,7 @@ const styles = StyleSheet.create({
   faceBack: {
     backgroundColor: colors.bg,
   },
-  speaker: { position: 'absolute', top: spacing.md, right: spacing.md },
+  speaker: { position: 'absolute', bottom: spacing.md, right: spacing.md },
   faceText: { fontSize: 24, fontWeight: '600', color: colors.text, textAlign: 'center' },
   tapHint: {
     position: 'absolute',
