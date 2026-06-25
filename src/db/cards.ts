@@ -120,15 +120,16 @@ export async function countDue(deckId: number): Promise<number> {
   return row?.n ?? 0;
 }
 
-/** Up to `limit` due cards for a practice batch, randomized so each session
- * draws a different set rather than always marching through the deck in order. */
-export async function getDueCards(deckId: number, limit: number): Promise<Card[]> {
+/** All currently-due cards for a deck, randomized once. The practice screen
+ * snapshots this at session start and deals batches off the top, so a card
+ * shown in a session never reappears in it (even if a rating makes it due
+ * again). Re-entering practice rebuilds the snapshot from the DB. */
+export async function getDueCards(deckId: number): Promise<Card[]> {
   const db = await getDb();
   return db.getAllAsync<Card>(
-    'SELECT * FROM cards WHERE deck_id = ? AND due_at <= ? ORDER BY RANDOM() LIMIT ?',
+    'SELECT * FROM cards WHERE deck_id = ? AND due_at <= ? ORDER BY RANDOM()',
     deckId,
-    Date.now(),
-    limit
+    Date.now()
   );
 }
 

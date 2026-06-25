@@ -1,5 +1,5 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Platform, StyleSheet, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -12,7 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
 import { SpeakerButton } from '@/components/SpeakerButton';
-import { Card, countDue, getDueCards, rateCard, Rating } from '@/db/cards';
+import { Card, getDueCards, rateCard, Rating } from '@/db/cards';
 import { colors, radius, spacing } from '@/theme';
 
 const BATCH_SIZE = 10;
@@ -33,6 +33,11 @@ export default function PracticeScreen() {
   const insets = useSafeAreaInsets();
 
   const [phase, setPhase] = useState<Phase>('loading');
+  // The session deck: due cards snapshotted once at session start, randomized,
+  // with the cards already dealt into batches removed. Each batch slices off the
+  // top, so a card shown this session never reappears — even if a rating leaves
+  // it due again. Exiting and re-entering rebuilds this from the DB.
+  const queue = useRef<Card[]>([]);
   const [batch, setBatch] = useState<Card[]>([]);
   const [index, setIndex] = useState(0);
   // The latest rating per batch index. Swiping back and re-rating overwrites the
@@ -78,24 +83,36 @@ export default function PracticeScreen() {
     ],
   }));
 
-  const loadBatch = useCallback(async () => {
-    setPhase('loading');
-    const cards = await getDueCards(deckId, BATCH_SIZE);
-    setBatch(cards);
+  // Deal the next cards off the top of the session deck. No DB query — the deck
+  // was snapshotted at session start, so a card already dealt never comes back.
+  const loadBatch = useCallback(() => {
+    const next = queue.current.slice(0, BATCH_SIZE);
+    queue.current = queue.current.slice(BATCH_SIZE);
+    setBatch(next);
+    setRemainingDue(queue.current.length);
     setIndex(0);
     setAnimate(false);
     setFlip(randomFace() ? 1 : 0);
     setRatings({});
-    setPhase(cards.length === 0 ? 'summary' : 'practice');
-  }, [deckId]);
+    setPhase(next.length === 0 ? 'summary' : 'practice');
+  }, []);
 
   useEffect(() => {
-    // Intentional one-time fetch of the first batch on mount. The compiler lint
-    // can't tell this apart from a render-loop setState, but it is a deliberate
-    // data load, not derived state.
+    // Snapshot the due cards once for this session, then deal the first batch.
+    // The compiler lint can't tell this one-time data load apart from a
+    // render-loop setState, but it is deliberate, not derived state.
+    let cancelled = false;
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    loadBatch();
-  }, [loadBatch]);
+    setPhase('loading');
+    getDueCards(deckId).then((cards) => {
+      if (cancelled) return;
+      queue.current = cards;
+      loadBatch();
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [deckId, loadBatch]);
 
   // Move to another card without rating it. Swiping is pure navigation: it never
   // touches familiarity, never writes to the DB, and never ends the session.
@@ -140,8 +157,8 @@ export default function PracticeScreen() {
       setFlip(randomFace() ? 1 : 0);
       setIndex(index + 1);
     } else {
-      // Batch finished — how many due cards are left for a next round?
-      setRemainingDue(await countDue(deckId));
+      // Batch finished. `remainingDue` was set when this batch was dealt and the
+      // session deck doesn't grow mid-batch, so it already reflects what's left.
       setPhase('summary');
     }
   }

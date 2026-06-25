@@ -35,18 +35,16 @@ describe('cards data layer', () => {
     expect(await cards.countDue(deckId)).toBe(1);
   });
 
-  it('getDueCards returns only due cards and respects the limit', async () => {
+  it('getDueCards returns all due cards', async () => {
     await cards.addCard(deckId, 'a', '1');
     await cards.addCard(deckId, 'b', '2');
     await cards.addCard(deckId, 'c', '3');
 
-    const limited = await cards.getDueCards(deckId, 2);
-    expect(limited).toHaveLength(2);
+    expect((await cards.getDueCards(deckId)).map((c) => c.front).sort()).toEqual(['a', 'b', 'c']);
 
     const all = await cards.listCards(deckId);
     await cards.rateCard(all[0].id, 'fine'); // no longer due
-    const due = await cards.getDueCards(deckId, 10);
-    expect(due.map((c) => c.front).sort()).toEqual(['b', 'c']);
+    expect((await cards.getDueCards(deckId)).map((c) => c.front).sort()).toEqual(['b', 'c']);
   });
 
   it('addCard starts a card at familiarity 0', async () => {
