@@ -11,7 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
 import { SpeakerButton } from '@/components/SpeakerButton';
-import { Card, getDueCards, Rating, rateCard } from '@/db/cards';
+import { Card, getDueCards, rateCard, Rating } from '@/db/cards';
 import { colors, radius, spacing } from '@/theme';
 
 const BATCH_SIZE = 10;
@@ -155,14 +155,21 @@ export default function PracticeScreen() {
       </Text>
 
       <Pressable style={styles.cardContainer} onPress={toggleFace}>
-        <Animated.View style={[styles.face, frontStyle]}>
+        <Animated.View
+          style={[styles.face, frontStyle]}
+          pointerEvents={showBack ? 'none' : 'auto'}
+        >
           <SpeakerButton text={card.front} language="nb-NO" style={styles.speaker} />
           <Text style={styles.faceText}>{card.front}</Text>
           <Text style={styles.tapHint}>Tap to flip</Text>
         </Animated.View>
-        <Animated.View style={[styles.face, styles.faceBack, backStyle]}>
-          <SpeakerButton text={card.back} language="nb-NO" style={styles.speaker} />
+        <Animated.View
+          style={[styles.face, styles.faceBack, backStyle]}
+          pointerEvents={showBack ? 'auto' : 'none'}
+        >
+          <SpeakerButton text={card.back} language="en-US" style={styles.speaker} />
           <Text style={styles.faceText}>{card.back}</Text>
+          <Text style={styles.tapHint}>Tap to flip</Text>
         </Animated.View>
       </Pressable>
 
