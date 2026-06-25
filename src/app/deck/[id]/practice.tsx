@@ -3,7 +3,6 @@ import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Platform, StyleSheet, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
-  interpolate,
   runOnJS,
   useAnimatedStyle,
   useDerivedValue,
@@ -43,35 +42,39 @@ export default function PracticeScreen() {
   // How many due cards are left after this batch — sizes the next round and its
   // button label (capped at BATCH_SIZE).
   const [remainingDue, setRemainingDue] = useState(0);
-  // false = front showing, true = back showing.
-  const [showBack, setShowBack] = useState(false);
+  // Number of half-turn flips so far. It only ever increases, so each tap spins
+  // the card forward in the same direction instead of unwinding back the way it
+  // came. Even = front showing, odd = back showing.
+  const [flip, setFlip] = useState(0);
+  const showBack = flip % 2 === 1;
   // Whether the next face change should animate. Tapping flips with animation;
   // advancing to the next card resets to the front with no animation, so the
   // flip-back never plays over the next card's text and spoil its answer.
   const [animate, setAnimate] = useState(true);
 
-  // 0 = front, 1 = back. Animates on tap, snaps instantly on card advance.
+  // Half-turns rotated. Animates toward `flip` on tap, snaps instantly on card
+  // advance. Each whole step is a 180° forward turn.
   const progress = useDerivedValue(() => {
-    const target = showBack ? 1 : 0;
-    return animate ? withTiming(target, { duration: 250 }) : target;
+    return animate ? withTiming(flip, { duration: 250 }) : flip;
   });
 
-  // Tap to flip the current card, with animation.
+  // Tap to flip the current card, with animation. Always advances forward so the
+  // card keeps spinning the same way rather than reversing.
   const toggleFace = useCallback(() => {
     setAnimate(true);
-    setShowBack((v) => !v);
+    setFlip((f) => f + 1);
   }, []);
 
   const frontStyle = useAnimatedStyle(() => ({
     transform: [
       { perspective: 1000 },
-      { rotateY: `${interpolate(progress.value, [0, 1], [0, 180])}deg` },
+      { rotateY: `${progress.value * 180}deg` },
     ],
   }));
   const backStyle = useAnimatedStyle(() => ({
     transform: [
       { perspective: 1000 },
-      { rotateY: `${interpolate(progress.value, [0, 1], [180, 360])}deg` },
+      { rotateY: `${progress.value * 180 + 180}deg` },
     ],
   }));
 
@@ -81,7 +84,7 @@ export default function PracticeScreen() {
     setBatch(cards);
     setIndex(0);
     setAnimate(false);
-    setShowBack(randomFace());
+    setFlip(randomFace() ? 1 : 0);
     setRatings({});
     setPhase(cards.length === 0 ? 'summary' : 'practice');
   }, [deckId]);
@@ -103,7 +106,7 @@ export default function PracticeScreen() {
       // Snap to the new card's starting face with no flip animation, so the old
       // face never rotates into view over the new card's text.
       setAnimate(false);
-      setShowBack(randomFace());
+      setFlip(randomFace() ? 1 : 0);
       setIndex(target);
     },
     [batch.length]
@@ -134,7 +137,7 @@ export default function PracticeScreen() {
       // Snap straight to the next card's starting face — no flip animation, so
       // the other face never rotates into view over the new card's text.
       setAnimate(false);
-      setShowBack(randomFace());
+      setFlip(randomFace() ? 1 : 0);
       setIndex(index + 1);
     } else {
       // Batch finished — how many due cards are left for a next round?
