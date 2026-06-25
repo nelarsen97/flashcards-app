@@ -281,7 +281,7 @@ const styles = StyleSheet.create({
   faceBack: {
     backgroundColor: colors.bg,
   },
-  speaker: { position: 'absolute', top: spacing.md, right: spacing.md },
+  speaker: { position: 'absolute', bottom: spacing.md, right: spacing.md },
   faceText: { fontSize: 24, fontWeight: '600', color: colors.text, textAlign: 'center' },
   tapHint: {
     position: 'absolute',
