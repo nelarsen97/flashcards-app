@@ -120,11 +120,12 @@ export async function countDue(deckId: number): Promise<number> {
   return row?.n ?? 0;
 }
 
-/** Up to `limit` due cards for a practice batch, oldest-due first. */
+/** Up to `limit` due cards for a practice batch, randomized so each session
+ * draws a different set rather than always marching through the deck in order. */
 export async function getDueCards(deckId: number, limit: number): Promise<Card[]> {
   const db = await getDb();
   return db.getAllAsync<Card>(
-    'SELECT * FROM cards WHERE deck_id = ? AND due_at <= ? ORDER BY due_at ASC, created_at ASC LIMIT ?',
+    'SELECT * FROM cards WHERE deck_id = ? AND due_at <= ? ORDER BY RANDOM() LIMIT ?',
     deckId,
     Date.now(),
     limit

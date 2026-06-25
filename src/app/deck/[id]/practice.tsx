@@ -11,7 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
 import { SpeakerButton } from '@/components/SpeakerButton';
-import { Card, getDueCards, rateCard, Rating } from '@/db/cards';
+import { Card, countDue, getDueCards, rateCard, Rating } from '@/db/cards';
 import { colors, radius, spacing } from '@/theme';
 
 const BATCH_SIZE = 10;
@@ -20,6 +20,10 @@ type Phase = 'loading' | 'practice' | 'summary';
 type Tally = { hard: number; close: number; fine: number; easy: number };
 
 const emptyTally: Tally = { hard: 0, close: 0, fine: 0, easy: 0 };
+
+// Randomly start a card on its front or back, so practice isn't always
+// front-first. true = show the back first.
+const randomFace = () => Math.random() < 0.5;
 
 export default function PracticeScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -31,7 +35,9 @@ export default function PracticeScreen() {
   const [batch, setBatch] = useState<Card[]>([]);
   const [index, setIndex] = useState(0);
   const [tally, setTally] = useState<Tally>(emptyTally);
-  const [moreDue, setMoreDue] = useState(false);
+  // How many due cards are left after this batch — sizes the next round and its
+  // button label (capped at BATCH_SIZE).
+  const [remainingDue, setRemainingDue] = useState(0);
   // false = front showing, true = back showing.
   const [showBack, setShowBack] = useState(false);
   // Whether the next face change should animate. Tapping flips with animation;
@@ -70,7 +76,7 @@ export default function PracticeScreen() {
     setBatch(cards);
     setIndex(0);
     setAnimate(false);
-    setShowBack(false);
+    setShowBack(randomFace());
     setTally(emptyTally);
     setPhase(cards.length === 0 ? 'summary' : 'practice');
   }, [deckId]);
@@ -92,15 +98,14 @@ export default function PracticeScreen() {
     setTally(nextTally);
 
     if (index + 1 < batch.length) {
-      // Snap straight to the front of the next card — no flip animation, so the
-      // back never rotates into view over the new card's text.
+      // Snap straight to the next card's starting face — no flip animation, so
+      // the other face never rotates into view over the new card's text.
       setAnimate(false);
-      setShowBack(false);
+      setShowBack(randomFace());
       setIndex(index + 1);
     } else {
-      // Batch finished — are there still due cards left for a next round?
-      const remaining = await getDueCards(deckId, 1);
-      setMoreDue(remaining.length > 0);
+      // Batch finished — how many due cards are left for a next round?
+      setRemainingDue(await countDue(deckId));
       setPhase('summary');
     }
   }
@@ -136,8 +141,11 @@ export default function PracticeScreen() {
         </View>
 
         <View style={styles.summaryActions}>
-          {moreDue ? (
-            <Button title="Practice next 10" onPress={loadBatch} />
+          {remainingDue > 0 ? (
+            <Button
+              title={`Practice ${Math.min(remainingDue, BATCH_SIZE)} more`}
+              onPress={loadBatch}
+            />
           ) : null}
           <Button title="Done" variant="secondary" onPress={() => router.back()} />
         </View>
