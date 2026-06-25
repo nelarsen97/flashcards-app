@@ -132,15 +132,31 @@ export async function getDueCards(deckId: number, limit: number): Promise<Card[]
   );
 }
 
-/** Apply a rating to a card, updating its familiarity level and due_at. */
-export async function rateCard(id: number, rating: Rating): Promise<void> {
+/**
+ * Apply a rating to a card, updating its familiarity level and due_at.
+ *
+ * `baselineFamiliarity` lets the caller rate against a known starting level
+ * instead of the card's current DB value. Practice uses this so re-rating a card
+ * (after swiping back to it) recomputes from the card's *original* level rather
+ * than compounding on the rating left behind by the earlier press. Omit it to
+ * rate against the current stored level.
+ */
+export async function rateCard(
+  id: number,
+  rating: Rating,
+  baselineFamiliarity?: number
+): Promise<void> {
   const db = await getDb();
-  const card = await db.getFirstAsync<{ familiarity: number }>(
-    'SELECT familiarity FROM cards WHERE id = ?',
-    id
-  );
-  if (!card) return;
-  const { familiarity, due_at } = nextReview(rating, card.familiarity, Date.now());
+  let baseline = baselineFamiliarity;
+  if (baseline === undefined) {
+    const card = await db.getFirstAsync<{ familiarity: number }>(
+      'SELECT familiarity FROM cards WHERE id = ?',
+      id
+    );
+    if (!card) return;
+    baseline = card.familiarity;
+  }
+  const { familiarity, due_at } = nextReview(rating, baseline, Date.now());
   await db.runAsync(
     'UPDATE cards SET familiarity = ?, due_at = ? WHERE id = ?',
     familiarity,

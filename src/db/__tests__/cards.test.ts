@@ -100,6 +100,19 @@ describe('cards data layer', () => {
     expect(await cards.countDue(deckId)).toBe(1);
   });
 
+  it('rateCard with an explicit baseline recomputes from it, not the stored value', async () => {
+    // Mirrors swiping back to a card and re-rating: the second rating must start
+    // from the card's original level (0), not the level the first rating left (2).
+    const id = await cards.addCard(deckId, 'a', '1');
+    await cards.rateCard(id, 'easy'); // level 0 → 2, pushed out
+    expect((await cards.getCard(id))!.familiarity).toBe(2);
+
+    await cards.rateCard(id, 'fine', 0); // re-rate from the original level 0
+    const card = await cards.getCard(id);
+    expect(card!.familiarity).toBe(1); // 0 + fine, not 2 + fine (3)
+    expect(card!.due_at).toBeGreaterThan(Date.now());
+  });
+
   it('editCard updates and trims front/back', async () => {
     const id = await cards.addCard(deckId, 'a', '1');
     await cards.editCard(id, '  katt  ', '  cat  ');

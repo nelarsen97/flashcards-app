@@ -1,8 +1,10 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, StyleSheet, Text, View } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   interpolate,
+  runOnJS,
   useAnimatedStyle,
   useDerivedValue,
   withTiming,
@@ -15,11 +17,11 @@ import { Card, countDue, getDueCards, rateCard, Rating } from '@/db/cards';
 import { colors, radius, spacing } from '@/theme';
 
 const BATCH_SIZE = 10;
+// Horizontal travel (px) past which a pan is treated as a navigation swipe.
+const SWIPE_THRESHOLD = 60;
 
 type Phase = 'loading' | 'practice' | 'summary';
 type Tally = { hard: number; close: number; fine: number; easy: number };
-
-const emptyTally: Tally = { hard: 0, close: 0, fine: 0, easy: 0 };
 
 // Randomly start a card on its front or back, so practice isn't always
 // front-first. true = show the back first.
@@ -34,7 +36,10 @@ export default function PracticeScreen() {
   const [phase, setPhase] = useState<Phase>('loading');
   const [batch, setBatch] = useState<Card[]>([]);
   const [index, setIndex] = useState(0);
-  const [tally, setTally] = useState<Tally>(emptyTally);
+  // The latest rating per batch index. Swiping back and re-rating overwrites the
+  // entry, so the summary counts each card once under its final rating, and cards
+  // only swiped past (never rated) never appear here.
+  const [ratings, setRatings] = useState<Record<number, Rating>>({});
   // How many due cards are left after this batch — sizes the next round and its
   // button label (capped at BATCH_SIZE).
   const [remainingDue, setRemainingDue] = useState(0);
@@ -77,7 +82,7 @@ export default function PracticeScreen() {
     setIndex(0);
     setAnimate(false);
     setShowBack(randomFace());
-    setTally(emptyTally);
+    setRatings({});
     setPhase(cards.length === 0 ? 'summary' : 'practice');
   }, [deckId]);
 
@@ -89,13 +94,41 @@ export default function PracticeScreen() {
     loadBatch();
   }, [loadBatch]);
 
+  // Move to another card without rating it. Swiping is pure navigation: it never
+  // touches familiarity, never writes to the DB, and never ends the session.
+  // Out-of-range targets (before the first / after the last card) are no-ops.
+  const goTo = useCallback(
+    (target: number) => {
+      if (target < 0 || target >= batch.length) return;
+      // Snap to the new card's starting face with no flip animation, so the old
+      // face never rotates into view over the new card's text.
+      setAnimate(false);
+      setShowBack(randomFace());
+      setIndex(target);
+    },
+    [batch.length]
+  );
+  const goNext = useCallback(() => goTo(index + 1), [goTo, index]);
+  const goPrev = useCallback(() => goTo(index - 1), [goTo, index]);
+
+  // Web fallback for swiping: arrow keys navigate while practicing.
+  useEffect(() => {
+    if (Platform.OS !== 'web' || phase !== 'practice') return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowRight') goNext();
+      else if (e.key === 'ArrowLeft') goPrev();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [phase, goNext, goPrev]);
+
   async function handleRate(level: Rating) {
     const card = batch[index];
     if (!card) return;
-    await rateCard(card.id, level);
-
-    const nextTally = { ...tally, [level]: tally[level] + 1 };
-    setTally(nextTally);
+    // Rate from the card's original level (its loaded value, never mutated), so a
+    // re-rate after swiping back replaces the earlier rating instead of stacking.
+    await rateCard(card.id, level, card.familiarity);
+    setRatings((r) => ({ ...r, [index]: level }));
 
     if (index + 1 < batch.length) {
       // Snap straight to the next card's starting face — no flip animation, so
@@ -120,7 +153,11 @@ export default function PracticeScreen() {
   }
 
   if (phase === 'summary') {
-    const reviewed = tally.hard + tally.close + tally.fine + tally.easy;
+    // Count each rated card once under its final rating (a re-rated card has a
+    // single entry in `ratings`). Cards only swiped past aren't in `ratings`.
+    const tally: Tally = { hard: 0, close: 0, fine: 0, easy: 0 };
+    for (const level of Object.values(ratings)) tally[level] += 1;
+    const reviewed = Object.keys(ratings).length;
     return (
       <View style={[styles.container, { paddingBottom: insets.bottom + spacing.md }]}>
         <Stack.Screen options={{ title: 'Session summary' }} />
@@ -155,6 +192,16 @@ export default function PracticeScreen() {
 
   // phase === 'practice'
   const card = batch[index];
+  // Tap flips the card; a horizontal swipe navigates (left → next, right → prev).
+  // activeOffsetX keeps small taps as flips rather than stealing them as pans.
+  const tap = Gesture.Tap().onEnd(() => runOnJS(toggleFace)());
+  const pan = Gesture.Pan()
+    .activeOffsetX([-20, 20])
+    .onEnd((e) => {
+      if (e.translationX < -SWIPE_THRESHOLD) runOnJS(goNext)();
+      else if (e.translationX > SWIPE_THRESHOLD) runOnJS(goPrev)();
+    });
+  const cardGesture = Gesture.Race(pan, tap);
   return (
     <View style={[styles.container, { paddingBottom: insets.bottom + spacing.md }]}>
       <Stack.Screen options={{ title: 'Practice' }} />
@@ -162,24 +209,26 @@ export default function PracticeScreen() {
         {index + 1} / {batch.length}
       </Text>
 
-      <Pressable style={styles.cardContainer} onPress={toggleFace}>
-        <Animated.View
-          style={[styles.face, frontStyle]}
-          pointerEvents={showBack ? 'none' : 'auto'}
-        >
-          <SpeakerButton text={card.front} language="nb-NO" style={styles.speaker} />
-          <Text style={styles.faceText}>{card.front}</Text>
-          <Text style={styles.tapHint}>Tap to flip</Text>
-        </Animated.View>
-        <Animated.View
-          style={[styles.face, styles.faceBack, backStyle]}
-          pointerEvents={showBack ? 'auto' : 'none'}
-        >
-          <SpeakerButton text={card.back} language="en-US" style={styles.speaker} />
-          <Text style={styles.faceText}>{card.back}</Text>
-          <Text style={styles.tapHint}>Tap to flip</Text>
-        </Animated.View>
-      </Pressable>
+      <GestureDetector gesture={cardGesture}>
+        <View style={styles.cardContainer}>
+          <Animated.View
+            style={[styles.face, frontStyle]}
+            pointerEvents={showBack ? 'none' : 'auto'}
+          >
+            <SpeakerButton text={card.front} language="nb-NO" style={styles.speaker} />
+            <Text style={styles.faceText}>{card.front}</Text>
+            <Text style={styles.tapHint}>Tap to flip · swipe to navigate</Text>
+          </Animated.View>
+          <Animated.View
+            style={[styles.face, styles.faceBack, backStyle]}
+            pointerEvents={showBack ? 'auto' : 'none'}
+          >
+            <SpeakerButton text={card.back} language="en-US" style={styles.speaker} />
+            <Text style={styles.faceText}>{card.back}</Text>
+            <Text style={styles.tapHint}>Tap to flip · swipe to navigate</Text>
+          </Animated.View>
+        </View>
+      </GestureDetector>
 
       <View style={styles.ratingRow}>
         <Button title="Hard" color={colors.hard} style={styles.ratingBtn} onPress={() => handleRate('hard')} />
