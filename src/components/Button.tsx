@@ -52,12 +52,16 @@ export function Button({
 
 const styles = StyleSheet.create({
   base: {
-    minHeight: 52,
+    // Fixed height instead of minHeight + paddingVertical: on Android's New
+    // Architecture (Fabric), combining a min-size constraint with padding and an
+    // outer margin makes the touchable hit-rect collapse toward the centered
+    // label, so only taps "near the text" register. A plain height + centered
+    // content keeps the whole button pressable. See facebook/react-native#53797.
+    height: 52,
     borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
   },
   secondaryBorder: {
     borderWidth: 1,

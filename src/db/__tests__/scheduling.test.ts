@@ -28,12 +28,6 @@ describe('nextReview (Leitner spaced-repetition ladder)', () => {
     expect(r.due_at).toBe(now + INTERVAL_DAYS[2] * DAY_MS); // 3 days
   });
 
-  it('"close" keeps the level and leaves the card due now (stays in the set)', () => {
-    const r = nextReview('close', 3, now);
-    expect(r.familiarity).toBe(3);
-    expect(r.due_at).toBe(now);
-  });
-
   it('"hard" resets to level 0 and due now', () => {
     const r = nextReview('hard', 5, now);
     expect(r.familiarity).toBe(0);

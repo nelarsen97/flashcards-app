@@ -9,15 +9,17 @@ stored locally on the device in SQLite — no accounts, no internet required.
 - Multiple named decks.
 - Add cards manually (front / back) or bulk-import from a CSV file.
 - Practice mode: up to 10 due cards per batch, flip to reveal, then rate it —
-  **Hard / Close / Fine / Easy**. Each card carries a **Familiarity** level (a
+  **Hard / Fine / Easy**. Each card carries a **Familiarity** level (a
   Leitner "box"); the rating moves that level, which sets how long the card is put away.
   - **Hard** → forgot: reset to level 0, stays due now.
-  - **Close** → almost: keep the level, stays due now (still in the practice set).
   - **Fine** → recalled: climb one level (longer interval).
   - **Easy** → easy: climb two levels.
   - Intervals grow along the ladder **1 → 3 → 7 → 14 → 30 → 60 days** (capped at 60),
     so a card you keep getting right returns less and less often.
   - When a card's timer passes, it automatically becomes due again.
+  - **Swipe** (or arrow keys on web) to move between cards without rating them —
+    Familiarity is left untouched, so a skipped card stays in the set for later.
+    Swiping forward past the last card skips it and ends the session.
 - Session summary after each batch, with the option to practice the next 10.
 
 ## CSV import format
@@ -81,6 +83,6 @@ Each card has a `due_at` timestamp (epoch ms) and a `familiarity` level (a Leitn
 start at `familiarity = 0`, `due_at = 0` (immediately due). Rating a card runs `nextReview`
 (`src/db/cards.ts`): the rating moves its familiarity level, and the new level indexes the
 interval ladder `INTERVAL_DAYS = [0, 1, 3, 7, 14, 30, 60]` (days) to set the next `due_at`.
-Hard and Close keep the card due now (it stays in the practice set); Fine and Easy push it
+Hard keeps the card due now (it stays in the practice set); Fine and Easy push it
 out along the ladder. These two fields drive both the practice filter and the automatic
 return of expired cards — no background job is needed.

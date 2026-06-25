@@ -21,7 +21,7 @@ const BATCH_SIZE = 10;
 const SWIPE_THRESHOLD = 60;
 
 type Phase = 'loading' | 'practice' | 'summary';
-type Tally = { hard: number; close: number; fine: number; easy: number };
+type Tally = { hard: number; fine: number; easy: number };
 
 // Randomly start a card on its front or back, so practice isn't always
 // front-first. true = show the back first.
@@ -94,22 +94,29 @@ export default function PracticeScreen() {
     loadBatch();
   }, [loadBatch]);
 
-  // Move to another card without rating it. Swiping is pure navigation: it never
-  // touches familiarity, never writes to the DB, and never ends the session.
-  // Out-of-range targets (before the first / after the last card) are no-ops.
-  const goTo = useCallback(
-    (target: number) => {
-      if (target < 0 || target >= batch.length) return;
-      // Snap to the new card's starting face with no flip animation, so the old
-      // face never rotates into view over the new card's text.
-      setAnimate(false);
-      setShowBack(randomFace());
-      setIndex(target);
-    },
-    [batch.length]
-  );
-  const goNext = useCallback(() => goTo(index + 1), [goTo, index]);
-  const goPrev = useCallback(() => goTo(index - 1), [goTo, index]);
+  // End the session and show the summary, sizing the "practice more" prompt.
+  const endSession = useCallback(async () => {
+    setRemainingDue(await countDue(deckId));
+    setPhase('summary');
+  }, [deckId]);
+
+  // Move to a card without rating it. Swiping is pure navigation: it never touches
+  // familiarity and never writes to the DB. Snap to the new card's starting face
+  // with no flip animation, so the old face never rotates into view over its text.
+  const goTo = useCallback((target: number) => {
+    setAnimate(false);
+    setShowBack(randomFace());
+    setIndex(target);
+  }, []);
+  // Swiping forward past the last card skips it (no rating) and ends the session;
+  // swiping back before the first card is a no-op.
+  const goNext = useCallback(() => {
+    if (index + 1 >= batch.length) endSession();
+    else goTo(index + 1);
+  }, [index, batch.length, goTo, endSession]);
+  const goPrev = useCallback(() => {
+    if (index > 0) goTo(index - 1);
+  }, [index, goTo]);
 
   // Web fallback for swiping: arrow keys navigate while practicing.
   useEffect(() => {
@@ -137,9 +144,8 @@ export default function PracticeScreen() {
       setShowBack(randomFace());
       setIndex(index + 1);
     } else {
-      // Batch finished — how many due cards are left for a next round?
-      setRemainingDue(await countDue(deckId));
-      setPhase('summary');
+      // Rating the last card finishes the batch.
+      await endSession();
     }
   }
 
@@ -155,7 +161,7 @@ export default function PracticeScreen() {
   if (phase === 'summary') {
     // Count each rated card once under its final rating (a re-rated card has a
     // single entry in `ratings`). Cards only swiped past aren't in `ratings`.
-    const tally: Tally = { hard: 0, close: 0, fine: 0, easy: 0 };
+    const tally: Tally = { hard: 0, fine: 0, easy: 0 };
     for (const level of Object.values(ratings)) tally[level] += 1;
     const reviewed = Object.keys(ratings).length;
     return (
@@ -170,7 +176,6 @@ export default function PracticeScreen() {
           ) : (
             <View style={styles.summaryRow}>
               <SummaryStat label="Hard" value={tally.hard} color={colors.hard} />
-              <SummaryStat label="Close" value={tally.close} color={colors.close} />
               <SummaryStat label="Fine" value={tally.fine} color={colors.fine} />
               <SummaryStat label="Easy" value={tally.easy} color={colors.easy} />
             </View>
@@ -232,7 +237,6 @@ export default function PracticeScreen() {
 
       <View style={styles.ratingRow}>
         <Button title="Hard" color={colors.hard} style={styles.ratingBtn} onPress={() => handleRate('hard')} />
-        <Button title="Close" color={colors.close} style={styles.ratingBtn} onPress={() => handleRate('close')} />
         <Button title="Fine" color={colors.fine} style={styles.ratingBtn} onPress={() => handleRate('fine')} />
         <Button title="Easy" color={colors.easy} style={styles.ratingBtn} onPress={() => handleRate('easy')} />
       </View>

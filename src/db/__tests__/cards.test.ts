@@ -73,20 +73,9 @@ describe('cards data layer', () => {
     const id = await cards.addCard(deckId, 'a', '1');
     await cards.rateCard(id, 'fine');
     expect((await cards.getCard(id))!.familiarity).toBe(1);
-    // Force it back into the due set, then rate again — the level should climb.
-    await cards.rateCard(id, 'close'); // keeps level, due now
-    await cards.rateCard(id, 'fine');
+    // Rate again from the now-current level — the level should climb.
+    await cards.rateCard(id, 'fine', 1);
     expect((await cards.getCard(id))!.familiarity).toBe(2);
-  });
-
-  it('rateCard "close" keeps the level and leaves the card due', async () => {
-    const id = await cards.addCard(deckId, 'a', '1');
-    await cards.rateCard(id, 'fine'); // level 1
-    await cards.rateCard(id, 'close'); // stays level 1, due now
-    const card = await cards.getCard(id);
-    expect(card!.familiarity).toBe(1);
-    expect(card!.due_at).toBeLessThanOrEqual(Date.now());
-    expect(await cards.countDue(deckId)).toBe(1);
   });
 
   it('rateCard "hard" resets a matured card to level 0 and due now', async () => {

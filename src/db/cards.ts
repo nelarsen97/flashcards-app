@@ -19,7 +19,7 @@ export interface Card {
  * The rating a user assigns to a card during practice (the four buttons). It moves
  * the card's familiarity level, which in turn picks the next review interval.
  */
-export type Rating = 'hard' | 'close' | 'fine' | 'easy';
+export type Rating = 'hard' | 'fine' | 'easy';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -41,18 +41,17 @@ export interface ReviewResult {
  * familiarity level and due_at. Pure (takes `now`), so it's unit-testable.
  *
  * - hard:  forgot — reset to level 0, stays due now (relearn from scratch).
- * - close: almost — keep the level, stays due now (remains in the practice set).
  * - fine:  recalled — advance one level, scheduled out by the ladder.
  * - easy:  easy — advance two levels, scheduled out by the ladder.
+ *
+ * (To keep a card in the set without changing its level, the user swipes past it
+ * instead of rating — that leaves familiarity and due_at untouched.)
  */
 export function nextReview(rating: Rating, familiarity: number, now: number): ReviewResult {
   let next: number;
   switch (rating) {
     case 'hard':
       next = 0;
-      break;
-    case 'close':
-      next = familiarity;
       break;
     case 'fine':
       next = familiarity + 1;
@@ -62,10 +61,9 @@ export function nextReview(rating: Rating, familiarity: number, now: number): Re
       break;
   }
   next = Math.min(MAX_LEVEL, Math.max(0, next));
-  // Hard/Close keep the card due now so it stays in the practice set; Fine/Easy
-  // push it out by the ladder interval for the new level.
-  const due_at =
-    rating === 'hard' || rating === 'close' ? now : now + INTERVAL_DAYS[next] * DAY_MS;
+  // Hard keeps the card due now so it stays in the practice set; Fine/Easy push it
+  // out by the ladder interval for the new level.
+  const due_at = rating === 'hard' ? now : now + INTERVAL_DAYS[next] * DAY_MS;
   return { familiarity: next, due_at };
 }
 

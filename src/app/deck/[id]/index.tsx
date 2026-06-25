@@ -317,7 +317,10 @@ function Stat({ label, value, highlight }: { label: string; value: number; highl
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: spacing.md },
+  // No paddingBottom: a bottom padding here combined with the actions block's
+  // bottom margin is the padding+margin stack that trips Fabric's hit-rect calc
+  // on Android (facebook/react-native#53797). The list adds its own bottom inset.
+  container: { flex: 1, paddingHorizontal: spacing.md, paddingTop: spacing.md },
   flex1: { flex: 1 },
   renameRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md, flexWrap: 'wrap' },
   input: {
@@ -343,9 +346,17 @@ const styles = StyleSheet.create({
   stat: { flex: 1 },
   statValue: { fontSize: 24, fontWeight: '700', color: colors.text, textAlign: 'center' },
   statLabel: { fontSize: 13, color: colors.textMuted, marginTop: 2, textAlign: 'center' },
-  actions: { gap: spacing.sm, marginBottom: spacing.lg },
+  // marginBottom moved off the buttons' container onto the (non-interactive)
+  // section label below, so the actions block no longer carries an outer margin.
+  actions: { gap: spacing.sm },
   actionRow: { flexDirection: 'row', gap: spacing.sm },
-  sectionLabel: { fontSize: 14, fontWeight: '700', color: colors.textMuted, marginBottom: spacing.sm },
+  sectionLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.textMuted,
+    marginTop: spacing.lg,
+    marginBottom: spacing.sm,
+  },
   list: { flex: 1 },
   listContent: { gap: spacing.sm, paddingBottom: spacing.xl },
   empty: { textAlign: 'center', color: colors.textMuted, marginTop: spacing.lg },

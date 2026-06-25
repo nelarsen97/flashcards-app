@@ -9,7 +9,7 @@ export const colors = {
   danger: '#D6453D',
   // Familiarity level colors (red → green progression)
   hard: '#D6453D',
-  close: '#E08C12',
+  mid: '#E08C12',
   fine: '#6E9A1F',
   easy: '#1F9D55',
 } as const;
@@ -20,7 +20,7 @@ export const colors = {
  */
 export function levelColor(familiarity: number): string {
   if (familiarity <= 0) return colors.textMuted; // new / lapsed
-  if (familiarity <= 2) return colors.close; // 1–2
+  if (familiarity <= 2) return colors.mid; // 1–2
   if (familiarity <= 4) return colors.fine; // 3–4
   return colors.easy; // 5+ (mature)
 }
