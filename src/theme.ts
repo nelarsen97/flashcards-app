@@ -14,6 +14,17 @@ export const colors = {
   easy: '#1F9D55',
 } as const;
 
+/**
+ * Color for a card's familiarity badge, ramping muted → orange → green as the
+ * level climbs (0 = new/lapsed, up through the mature end of the Leitner ladder).
+ */
+export function levelColor(familiarity: number): string {
+  if (familiarity <= 0) return colors.textMuted; // new / lapsed
+  if (familiarity <= 2) return colors.close; // 1–2
+  if (familiarity <= 4) return colors.fine; // 3–4
+  return colors.easy; // 5+ (mature)
+}
+
 export const spacing = {
   xs: 4,
   sm: 8,

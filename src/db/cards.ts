@@ -5,32 +5,68 @@ export interface Card {
   deck_id: number;
   front: string;
   back: string;
+  /**
+   * Familiarity "box" (Leitner level). 0 = new/lapsed (due now); each successful
+   * recall climbs the ladder for a longer interval. See INTERVAL_DAYS.
+   */
+  familiarity: number;
   /** Epoch ms after which the card is "learned". A card is due when due_at <= now. */
   due_at: number;
   created_at: number;
 }
 
 /**
- * The familiarity level a user assigns to a card during practice. Each level
- * controls how long the card is removed from the deck's "unlearned" set.
+ * The rating a user assigns to a card during practice (the four buttons). It moves
+ * the card's familiarity level, which in turn picks the next review interval.
  */
-export type FamiliarityLevel = 'hard' | 'close' | 'fine' | 'easy';
+export type Rating = 'hard' | 'close' | 'fine' | 'easy';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-const WEEK_MS = 7 * DAY_MS;
 
-/** Maps a familiarity level to the next due_at, relative to `now`. Exported for unit tests. */
-export function nextDueAt(level: FamiliarityLevel, now: number): number {
-  switch (level) {
+/**
+ * Leitner interval ladder, in days, indexed by familiarity level. Level 0 means
+ * the card is due immediately (new or just lapsed); each successful recall climbs
+ * the ladder for a longer gap, capped at MAX_LEVEL (60 days).
+ */
+export const INTERVAL_DAYS = [0, 1, 3, 7, 14, 30, 60] as const;
+export const MAX_LEVEL = INTERVAL_DAYS.length - 1; // 6 → 60 days
+
+export interface ReviewResult {
+  familiarity: number;
+  due_at: number;
+}
+
+/**
+ * Given a rating and the card's current familiarity, returns the card's next
+ * familiarity level and due_at. Pure (takes `now`), so it's unit-testable.
+ *
+ * - hard:  forgot — reset to level 0, stays due now (relearn from scratch).
+ * - close: almost — keep the level, stays due now (remains in the practice set).
+ * - fine:  recalled — advance one level, scheduled out by the ladder.
+ * - easy:  easy — advance two levels, scheduled out by the ladder.
+ */
+export function nextReview(rating: Rating, familiarity: number, now: number): ReviewResult {
+  let next: number;
+  switch (rating) {
     case 'hard':
-      return now; // stays due / unlearned
+      next = 0;
+      break;
     case 'close':
-      return now + DAY_MS; // removed for 1 day
+      next = familiarity;
+      break;
     case 'fine':
-      return now + 4 * DAY_MS; // removed for 4 days
+      next = familiarity + 1;
+      break;
     case 'easy':
-      return now + WEEK_MS; // removed for 1 week
+      next = familiarity + 2;
+      break;
   }
+  next = Math.min(MAX_LEVEL, Math.max(0, next));
+  // Hard/Close keep the card due now so it stays in the practice set; Fine/Easy
+  // push it out by the ladder interval for the new level.
+  const due_at =
+    rating === 'hard' || rating === 'close' ? now : now + INTERVAL_DAYS[next] * DAY_MS;
+  return { familiarity: next, due_at };
 }
 
 export async function listCards(deckId: number): Promise<Card[]> {
@@ -95,10 +131,21 @@ export async function getDueCards(deckId: number, limit: number): Promise<Card[]
   );
 }
 
-/** Apply a familiarity level to a card, updating its due_at. */
-export async function rateCard(id: number, level: FamiliarityLevel): Promise<void> {
+/** Apply a rating to a card, updating its familiarity level and due_at. */
+export async function rateCard(id: number, rating: Rating): Promise<void> {
   const db = await getDb();
-  await db.runAsync('UPDATE cards SET due_at = ? WHERE id = ?', nextDueAt(level, Date.now()), id);
+  const card = await db.getFirstAsync<{ familiarity: number }>(
+    'SELECT familiarity FROM cards WHERE id = ?',
+    id
+  );
+  if (!card) return;
+  const { familiarity, due_at } = nextReview(rating, card.familiarity, Date.now());
+  await db.runAsync(
+    'UPDATE cards SET familiarity = ?, due_at = ? WHERE id = ?',
+    familiarity,
+    due_at,
+    id
+  );
 }
 
 /** Re-assign a set of cards to another deck. Card learned/due state is preserved. */

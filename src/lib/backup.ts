@@ -10,11 +10,12 @@ import { getDb } from '@/db/database';
  * app sandbox (Drive, Downloads, email, ...). Restore re-imports that file.
  */
 
-const BACKUP_VERSION = 1;
+const BACKUP_VERSION = 2;
 
 interface BackupCard {
   front: string;
   back: string;
+  familiarity: number;
   due_at: number;
   created_at: number;
 }
@@ -45,7 +46,7 @@ export async function exportAllToFile(): Promise<BackupCounts & { uri: string }>
   let cardCount = 0;
   for (const d of decks) {
     const cards = await db.getAllAsync<BackupCard>(
-      'SELECT front, back, due_at, created_at FROM cards WHERE deck_id = ? ORDER BY created_at ASC',
+      'SELECT front, back, familiarity, due_at, created_at FROM cards WHERE deck_id = ? ORDER BY created_at ASC',
       d.id
     );
     cardCount += cards.length;
@@ -109,10 +110,11 @@ export async function importFromText(text: string): Promise<BackupCounts> {
       for (const c of cards) {
         if (!c || typeof c.front !== 'string' || typeof c.back !== 'string') continue;
         await db.runAsync(
-          'INSERT INTO cards (deck_id, front, back, due_at, created_at) VALUES (?, ?, ?, ?, ?)',
+          'INSERT INTO cards (deck_id, front, back, familiarity, due_at, created_at) VALUES (?, ?, ?, ?, ?, ?)',
           deckId,
           c.front,
           c.back,
+          typeof c.familiarity === 'number' ? c.familiarity : 0,
           typeof c.due_at === 'number' ? c.due_at : 0,
           typeof c.created_at === 'number' ? c.created_at : now
         );

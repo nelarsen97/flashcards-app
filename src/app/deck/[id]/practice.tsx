@@ -11,7 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
 import { SpeakerButton } from '@/components/SpeakerButton';
-import { Card, FamiliarityLevel, getDueCards, rateCard } from '@/db/cards';
+import { Card, getDueCards, Rating, rateCard } from '@/db/cards';
 import { colors, radius, spacing } from '@/theme';
 
 const BATCH_SIZE = 10;
@@ -83,7 +83,7 @@ export default function PracticeScreen() {
     loadBatch();
   }, [loadBatch]);
 
-  async function handleRate(level: FamiliarityLevel) {
+  async function handleRate(level: Rating) {
     const card = batch[index];
     if (!card) return;
     await rateCard(card.id, level);
@@ -161,7 +161,7 @@ export default function PracticeScreen() {
           <Text style={styles.tapHint}>Tap to flip</Text>
         </Animated.View>
         <Animated.View style={[styles.face, styles.faceBack, backStyle]}>
-          <SpeakerButton text={card.back} language="en-US" style={styles.speaker} />
+          <SpeakerButton text={card.back} language="nb-NO" style={styles.speaker} />
           <Text style={styles.faceText}>{card.back}</Text>
         </Animated.View>
       </Pressable>

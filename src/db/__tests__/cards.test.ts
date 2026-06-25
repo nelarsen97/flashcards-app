@@ -49,12 +49,55 @@ describe('cards data layer', () => {
     expect(due.map((c) => c.front).sort()).toEqual(['b', 'c']);
   });
 
-  it('rateCard pushes due_at into the future so the card is no longer due', async () => {
+  it('addCard starts a card at familiarity 0', async () => {
     const id = await cards.addCard(deckId, 'a', '1');
-    await cards.rateCard(id, 'close');
+    expect((await cards.getCard(id))!.familiarity).toBe(0);
+  });
+
+  it('importCards starts cards at familiarity 0', async () => {
+    await cards.importCards(deckId, [{ front: 'a', back: '1' }]);
+    const list = await cards.listCards(deckId);
+    expect(list.every((c) => c.familiarity === 0)).toBe(true);
+  });
+
+  it('rateCard "fine" advances familiarity and pushes due_at past now', async () => {
+    const id = await cards.addCard(deckId, 'a', '1');
+    await cards.rateCard(id, 'fine');
     const card = await cards.getCard(id);
+    expect(card!.familiarity).toBe(1);
     expect(card!.due_at).toBeGreaterThan(Date.now());
     expect(await cards.countDue(deckId)).toBe(0);
+  });
+
+  it('rateCard grows familiarity across repeated "fine" ratings', async () => {
+    const id = await cards.addCard(deckId, 'a', '1');
+    await cards.rateCard(id, 'fine');
+    expect((await cards.getCard(id))!.familiarity).toBe(1);
+    // Force it back into the due set, then rate again — the level should climb.
+    await cards.rateCard(id, 'close'); // keeps level, due now
+    await cards.rateCard(id, 'fine');
+    expect((await cards.getCard(id))!.familiarity).toBe(2);
+  });
+
+  it('rateCard "close" keeps the level and leaves the card due', async () => {
+    const id = await cards.addCard(deckId, 'a', '1');
+    await cards.rateCard(id, 'fine'); // level 1
+    await cards.rateCard(id, 'close'); // stays level 1, due now
+    const card = await cards.getCard(id);
+    expect(card!.familiarity).toBe(1);
+    expect(card!.due_at).toBeLessThanOrEqual(Date.now());
+    expect(await cards.countDue(deckId)).toBe(1);
+  });
+
+  it('rateCard "hard" resets a matured card to level 0 and due now', async () => {
+    const id = await cards.addCard(deckId, 'a', '1');
+    await cards.rateCard(id, 'easy'); // jump to level 2
+    expect((await cards.getCard(id))!.familiarity).toBe(2);
+    await cards.rateCard(id, 'hard');
+    const card = await cards.getCard(id);
+    expect(card!.familiarity).toBe(0);
+    expect(card!.due_at).toBeLessThanOrEqual(Date.now());
+    expect(await cards.countDue(deckId)).toBe(1);
   });
 
   it('editCard updates and trims front/back', async () => {

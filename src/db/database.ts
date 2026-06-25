@@ -28,15 +28,23 @@ async function openAndMigrate(): Promise<SQLite.SQLiteDatabase> {
     );
 
     CREATE TABLE IF NOT EXISTS cards (
-      id         INTEGER PRIMARY KEY NOT NULL,
-      deck_id    INTEGER NOT NULL REFERENCES decks(id) ON DELETE CASCADE,
-      front      TEXT NOT NULL,
-      back       TEXT NOT NULL,
-      due_at     INTEGER NOT NULL DEFAULT 0,
-      created_at INTEGER NOT NULL
+      id          INTEGER PRIMARY KEY NOT NULL,
+      deck_id     INTEGER NOT NULL REFERENCES decks(id) ON DELETE CASCADE,
+      front       TEXT NOT NULL,
+      back        TEXT NOT NULL,
+      familiarity INTEGER NOT NULL DEFAULT 0,
+      due_at      INTEGER NOT NULL DEFAULT 0,
+      created_at  INTEGER NOT NULL
     );
 
     CREATE INDEX IF NOT EXISTS idx_cards_deck_due ON cards(deck_id, due_at);
   `);
+
+  // Migration: older installs have a cards table that predates `familiarity`.
+  const cols = await db.getAllAsync<{ name: string }>('PRAGMA table_info(cards)');
+  if (!cols.some((c) => c.name === 'familiarity')) {
+    await db.execAsync('ALTER TABLE cards ADD COLUMN familiarity INTEGER NOT NULL DEFAULT 0');
+  }
+
   return db;
 }

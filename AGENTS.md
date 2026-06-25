@@ -22,4 +22,5 @@ before writing code. Add native modules with `npx expo install`, not `npm instal
 
 ## Conventions
 - Use theme tokens from `src/theme.ts` (`colors`/`spacing`/`radius`); don't hard-code.
-- See `README.md` for architecture, the SQLite `due_at` spaced-repetition model, and CSV format.
+- See `README.md` for architecture, the SQLite `familiarity` + `due_at` Leitner
+  spaced-repetition model (`nextReview` in `src/db/cards.ts`), and CSV format.

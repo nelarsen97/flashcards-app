@@ -8,7 +8,7 @@ import { Button } from '@/components/Button';
 import { Card, importCards, listCards, moveCards } from '@/db/cards';
 import { deleteDeck, DeckWithCounts, getDeck, listDecksWithCounts, renameDeck } from '@/db/decks';
 import { parseSemicolonCsv } from '@/lib/csv';
-import { colors, radius, spacing } from '@/theme';
+import { colors, levelColor, radius, spacing } from '@/theme';
 
 export default function DeckDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -240,7 +240,12 @@ export default function DeckDetailScreen() {
                   {isSelected ? <Text style={styles.checkboxMark}>✓</Text> : null}
                 </View>
               ) : (
-                <View style={[styles.statusDot, { backgroundColor: isDue ? colors.fine : colors.easy }]} />
+                <View style={styles.levelInfo}>
+                  {isDue ? <View style={styles.dueDot} /> : null}
+                  <View style={[styles.levelBadge, { backgroundColor: levelColor(item.familiarity) }]}>
+                    <Text style={styles.levelText}>Lvl {item.familiarity}</Text>
+                  </View>
+                </View>
               )}
             </Pressable>
           );
@@ -356,7 +361,10 @@ const styles = StyleSheet.create({
   pressed: { opacity: 0.7 },
   cardFront: { fontSize: 16, fontWeight: '600', color: colors.text },
   cardBack: { fontSize: 14, color: colors.textMuted, marginTop: 2 },
-  statusDot: { width: 10, height: 10, borderRadius: 5, marginLeft: spacing.md },
+  levelInfo: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginLeft: spacing.md },
+  dueDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.primary },
+  levelBadge: { paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: radius.sm },
+  levelText: { color: colors.primaryText, fontSize: 12, fontWeight: '700' },
   footer: { gap: spacing.sm, marginTop: spacing.lg },
   selectionCount: { fontSize: 15, fontWeight: '600', color: colors.text, textAlign: 'center' },
   checkbox: {

@@ -19,6 +19,8 @@ export function SpeakerButton({ text, language, style }: Props) {
   async function speak() {
     try {
       await Speech.stop();
+      const voices = await Speech.getAvailableVoicesAsync()
+      console.log(voices);
       Speech.speak(text, { language });
     } catch {
       // No-op: e.g. the requested voice isn't installed on this device.
