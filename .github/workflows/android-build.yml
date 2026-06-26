@@ -12,6 +12,9 @@ name: Android APK (CI)
 on:
   push:
     branches: [master]
+    # Docs-only pushes don't change the APK, so don't spend a full build on them.
+    paths-ignore:
+      - '**.md'
 
 # Needed so the workflow's GITHUB_TOKEN can create/update the GitHub Release.
 permissions:
@@ -37,28 +40,39 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        # --prefer-offline reuses the npm cache; --no-audit/--no-fund skip
+        # network/metadata work that's pointless in CI.
+        run: npm ci --prefer-offline --no-audit --no-fund
 
       # Managed project: generate the native android/ project from app.json.
       # --no-install skips a redundant dependency install (done by npm ci above).
       - name: Generate native Android project
         run: npx expo prebuild --platform android --no-install
 
-      # After prebuild, so cache:gradle can hash the generated Gradle files.
       - name: Set up JDK
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 17
-          cache: gradle
+
+      # Caches ~/.gradle — downloaded dependencies AND the local build cache
+      # (~/.gradle/caches/build-cache-1) — with proper save-on-every-run
+      # semantics and restore-key fallback. Combined with --build-cache below
+      # this lets Gradle reuse unchanged task outputs (Kotlin/Java/resource
+      # compilation from the RN + Expo modules) across builds. Replaces
+      # setup-java's `cache: gradle`, which only cached dependencies and, with a
+      # key that never changed, never updated the build cache after run #1.
+      - name: Set up Gradle caching
+        uses: gradle/actions/setup-gradle@v4
 
       # Give every CI build a unique, increasing versionCode (the workflow run
       # number) so a new APK installs as an in-place update over the previous CI
       # build instead of being rejected with "package version matches installed
       # package version". app.json pins no android.versionCode, so prebuild would
-      # otherwise emit versionCode 1 every time. Done AFTER the JDK setup on
-      # purpose: editing build.gradle earlier would change the file the Gradle
-      # cache key is hashed from and bust the cache on every run.
+      # otherwise emit versionCode 1 every time. Done AFTER the Gradle caching
+      # setup on purpose: the run number changes every build, so editing
+      # build.gradle earlier would perturb the cache key the restore is computed
+      # from.
       - name: Set versionCode to the run number
         run: |
           sed -i -E "s/versionCode [0-9]+/versionCode ${{ github.run_number }}/" android/app/build.gradle
@@ -76,14 +90,7 @@ jobs:
         working-directory: android
         run: |
           chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a
-
-      - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-release-${{ github.sha }}
-          path: android/app/build/outputs/apk/release/app-release.apk
-          if-no-files-found: error
+          ./gradlew assembleRelease --no-daemon --build-cache -PreactNativeArchitectures=arm64-v8a
 
       # Publish to a rolling prerelease so the download URL is stable:
       # https://github.com/<owner>/<repo>/releases/download/ci-latest/app-release.apk
