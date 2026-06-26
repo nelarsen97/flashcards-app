@@ -5,10 +5,10 @@ import { useCallback, useState } from 'react';
 import { Alert, FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { Button } from '@/components/Button';
-import { Card, importCards, listCards, moveCards } from '@/db/cards';
+import { Card, importCards, LEVEL_GROUPS, LevelGroup, listCards, moveCards } from '@/db/cards';
 import { deleteDeck, DeckWithCounts, getDeck, listDecksWithCounts, renameDeck } from '@/db/decks';
 import { parseSemicolonCsv } from '@/lib/csv';
-import { filterCards } from '@/lib/search';
+import { applyCardFilters, CardStatus } from '@/lib/search';
 import { colors, levelColor, radius, spacing } from '@/theme';
 
 export default function DeckDetailScreen() {
@@ -27,6 +27,12 @@ export default function DeckDetailScreen() {
 
   // Live card search: narrows the list as the user types (no submit).
   const [query, setQuery] = useState('');
+
+  // Status (due/learned) and familiarity-group filters that combine with the
+  // search query to narrow the visible list. The level menu is a small dropdown.
+  const [status, setStatus] = useState<CardStatus>('all');
+  const [group, setGroup] = useState<LevelGroup | null>(null);
+  const [levelMenuVisible, setLevelMenuVisible] = useState(false);
 
   // Selection mode: pick cards to move into another deck.
   const [selecting, setSelecting] = useState(false);
@@ -50,7 +56,18 @@ export default function DeckDetailScreen() {
   const learned = cards.length - due;
 
   // Deck-wide stats above use the full `cards`; only the list below is filtered.
-  const visibleCards = filterCards(cards, query);
+  const visibleCards = applyCardFilters(cards, { query, status, group, now });
+  const hasActiveFilter = query.trim() !== '' || status !== 'all' || group !== null;
+
+  // Tapping the active status tile clears it (back to "all"); Total always shows all.
+  const toggleStatus = (next: Exclude<CardStatus, 'all'>) =>
+    setStatus((s) => (s === next ? 'all' : next));
+
+  function clearFilters() {
+    setQuery('');
+    setStatus('all');
+    setGroup(null);
+  }
 
   async function handleRename() {
     const next = draftName.trim();
@@ -164,9 +181,28 @@ export default function DeckDetailScreen() {
       ) : null}
 
       <View style={styles.statsCard}>
-        <Stat label="Total" value={cards.length} />
-        <Stat label="Due" value={due} highlight />
-        <Stat label="Learned" value={learned} />
+        <Stat
+          label="Total"
+          value={cards.length}
+          active={status === 'all'}
+          disabled={cards.length === 0}
+          onPress={() => setStatus('all')}
+        />
+        <Stat
+          label="Due"
+          value={due}
+          highlight
+          active={status === 'due'}
+          disabled={cards.length === 0}
+          onPress={() => toggleStatus('due')}
+        />
+        <Stat
+          label="Learned"
+          value={learned}
+          active={status === 'learned'}
+          disabled={cards.length === 0}
+          onPress={() => toggleStatus('learned')}
+        />
       </View>
 
       {selecting ? (
@@ -215,7 +251,26 @@ export default function DeckDetailScreen() {
         </View>
       )}
 
-      <Text style={styles.sectionLabel}>Cards</Text>
+      <View style={styles.cardsHeader}>
+        <Text style={styles.sectionLabel}>Cards</Text>
+        {cards.length > 0 ? (
+          <Pressable
+            style={({ pressed }) => [
+              styles.levelChip,
+              group !== null && styles.levelChipActive,
+              pressed && styles.pressed,
+            ]}
+            onPress={() => setLevelMenuVisible(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Filter by level"
+          >
+            <Text style={[styles.levelChipText, group !== null && styles.levelChipTextActive]}>
+              {group !== null ? LEVEL_GROUPS.find((g) => g.key === group)?.label : 'Level'}
+            </Text>
+            <Text style={[styles.levelChipCaret, group !== null && styles.levelChipTextActive]}>▾</Text>
+          </Pressable>
+        ) : null}
+      </View>
       {cards.length > 0 ? (
         <View style={styles.searchRow}>
           <TextInput
@@ -248,8 +303,11 @@ export default function DeckDetailScreen() {
         contentContainerStyle={styles.listContent}
         keyboardShouldPersistTaps="handled"
         ListEmptyComponent={
-          query.trim() ? (
-            <Text style={styles.empty}>No cards match &ldquo;{query.trim()}&rdquo;.</Text>
+          hasActiveFilter ? (
+            <View style={styles.emptyFilter}>
+              <Text style={styles.empty}>No cards match your filters.</Text>
+              <Button title="Clear filters" variant="secondary" onPress={clearFilters} />
+            </View>
           ) : (
             <Text style={styles.empty}>No cards yet. Add one or import a CSV.</Text>
           )
@@ -342,16 +400,101 @@ export default function DeckDetailScreen() {
           </View>
         </View>
       </Modal>
+
+      <Modal
+        visible={levelMenuVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setLevelMenuVisible(false)}
+      >
+        <Pressable style={styles.modalBackdrop} onPress={() => setLevelMenuVisible(false)}>
+          <View style={styles.levelMenuCard}>
+            <LevelOption
+              label="All levels"
+              active={group === null}
+              onPress={() => {
+                setGroup(null);
+                setLevelMenuVisible(false);
+              }}
+            />
+            {LEVEL_GROUPS.map((g) => (
+              <LevelOption
+                key={g.key}
+                label={g.label}
+                color={levelColor(g.min)}
+                count={cards.filter((c) => c.familiarity >= g.min && c.familiarity <= g.max).length}
+                active={group === g.key}
+                onPress={() => {
+                  setGroup(g.key);
+                  setLevelMenuVisible(false);
+                }}
+              />
+            ))}
+          </View>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
 
-function Stat({ label, value, highlight }: { label: string; value: number; highlight?: boolean }) {
+function LevelOption({
+  label,
+  color,
+  count,
+  active,
+  onPress,
+}: {
+  label: string;
+  color?: string;
+  count?: number;
+  active?: boolean;
+  onPress: () => void;
+}) {
   return (
-    <View style={styles.stat}>
+    <Pressable
+      style={({ pressed }) => [
+        styles.levelOption,
+        active && styles.levelOptionActive,
+        pressed && styles.pressed,
+      ]}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityState={{ selected: active }}
+    >
+      <View style={[styles.levelDot, { backgroundColor: color ?? 'transparent' }]} />
+      <Text style={[styles.levelOptionLabel, active && styles.levelOptionLabelActive]}>{label}</Text>
+      {count !== undefined ? <Text style={styles.levelOptionCount}>{count}</Text> : null}
+    </Pressable>
+  );
+}
+
+function Stat({
+  label,
+  value,
+  highlight,
+  active,
+  disabled,
+  onPress,
+}: {
+  label: string;
+  value: number;
+  highlight?: boolean;
+  active?: boolean;
+  disabled?: boolean;
+  onPress?: () => void;
+}) {
+  return (
+    <Pressable
+      style={[styles.stat, active && styles.statActive]}
+      onPress={onPress}
+      disabled={disabled}
+      accessibilityRole="button"
+      accessibilityState={{ selected: active, disabled }}
+      accessibilityLabel={`Filter by ${label}`}
+    >
       <Text style={[styles.statValue, highlight && { color: colors.primary }]}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
-    </View>
+      <Text style={[styles.statLabel, active && styles.statLabelActive]}>{label}</Text>
+    </Pressable>
   );
 }
 
@@ -396,26 +539,45 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radius.md,
-    paddingVertical: spacing.md,
+    padding: spacing.xs,
     marginBottom: spacing.md,
   },
-  stat: { flex: 1 },
+  stat: { flex: 1, paddingVertical: spacing.sm + 2, borderRadius: radius.sm },
+  statActive: { backgroundColor: colors.bg },
   statValue: { fontSize: 24, fontWeight: '700', color: colors.text, textAlign: 'center' },
   statLabel: { fontSize: 13, color: colors.textMuted, marginTop: 2, textAlign: 'center' },
+  statLabelActive: { color: colors.text, fontWeight: '700' },
   // marginBottom moved off the buttons' container onto the (non-interactive)
   // section label below, so the actions block no longer carries an outer margin.
   actions: { gap: spacing.sm },
   actionRow: { flexDirection: 'row', gap: spacing.sm },
-  sectionLabel: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.textMuted,
+  cardsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     marginTop: spacing.lg,
     marginBottom: spacing.sm,
   },
+  sectionLabel: { fontSize: 14, fontWeight: '700', color: colors.textMuted },
+  levelChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  levelChipActive: { borderColor: colors.primary, backgroundColor: colors.bg },
+  levelChipText: { fontSize: 13, fontWeight: '600', color: colors.textMuted },
+  levelChipTextActive: { color: colors.primary },
+  levelChipCaret: { fontSize: 11, color: colors.textMuted },
   list: { flex: 1 },
   listContent: { gap: spacing.sm, paddingBottom: spacing.xl },
   empty: { textAlign: 'center', color: colors.textMuted, marginTop: spacing.lg },
+  emptyFilter: { gap: spacing.md, alignItems: 'center' },
   cardRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -472,4 +634,25 @@ const styles = StyleSheet.create({
   },
   deckOptionName: { fontSize: 16, fontWeight: '600', color: colors.text },
   deckOptionMeta: { fontSize: 13, color: colors.textMuted, marginTop: 2 },
+  levelMenuCard: {
+    backgroundColor: colors.card,
+    borderRadius: radius.lg,
+    padding: spacing.sm,
+    gap: spacing.xs,
+    minWidth: 220,
+    alignSelf: 'center',
+  },
+  levelOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radius.sm,
+  },
+  levelOptionActive: { backgroundColor: colors.bg },
+  levelDot: { width: 10, height: 10, borderRadius: 5 },
+  levelOptionLabel: { flex: 1, fontSize: 15, color: colors.text },
+  levelOptionLabelActive: { fontWeight: '700' },
+  levelOptionCount: { fontSize: 13, color: colors.textMuted, fontWeight: '600' },
 });

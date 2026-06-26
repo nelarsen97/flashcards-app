@@ -31,6 +31,25 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 export const INTERVAL_DAYS = [0, 1, 3, 7, 14, 30, 60] as const;
 export const MAX_LEVEL = INTERVAL_DAYS.length - 1; // 6 → 60 days
 
+/**
+ * Familiarity levels bucketed for display and filtering, aligned with the color
+ * bands in `levelColor` (theme.ts): New (0) · Learning (1–2) · Familiar (3–4) ·
+ * Mature (5–MAX_LEVEL). Used by the deck view's level filter.
+ */
+export type LevelGroup = 'new' | 'learning' | 'familiar' | 'mature';
+
+export const LEVEL_GROUPS: readonly {
+  key: LevelGroup;
+  label: string;
+  min: number;
+  max: number;
+}[] = [
+  { key: 'new', label: 'New', min: 0, max: 0 },
+  { key: 'learning', label: 'Learning', min: 1, max: 2 },
+  { key: 'familiar', label: 'Familiar', min: 3, max: 4 },
+  { key: 'mature', label: 'Mature', min: 5, max: MAX_LEVEL },
+];
+
 export interface ReviewResult {
   familiarity: number;
   due_at: number;
