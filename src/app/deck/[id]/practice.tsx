@@ -436,7 +436,6 @@ function CardFace({
         <SpeakerButton text={text} language={language} />
       </CardCorner>
       <Text style={styles.faceText}>{text}</Text>
-      <Text style={styles.tapHint}>Tap to flip · swipe to navigate</Text>
     </Animated.View>
   );
 }
@@ -542,15 +541,6 @@ const styles = StyleSheet.create({
   pencilPressed: { backgroundColor: colors.bg },
   pencilIcon: { fontSize: 26 },
   faceText: { fontSize: 24, fontWeight: '600', color: colors.text, textAlign: 'center' },
-  tapHint: {
-    position: 'absolute',
-    bottom: spacing.lg,
-    left: spacing.lg,
-    right: spacing.lg,
-    textAlign: 'center',
-    fontSize: 14,
-    color: colors.textMuted,
-  },
   ratingRow: { flexDirection: 'row', gap: spacing.xs },
   ratingBtn: { flex: 1, paddingHorizontal: spacing.xs },
   summaryCard: {
