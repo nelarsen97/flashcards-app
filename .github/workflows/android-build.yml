@@ -1,0 +1,58 @@
+name: Android APK (CI)
+
+# Builds an installable debug APK on the GitHub runner itself via Gradle — no
+# EAS servers, so this spends GitHub Actions minutes (free on public repos),
+# not EAS build credits. Runs on every push to master; grab the APK from the
+# run's "Artifacts" section. The manual EAS workflow (eas-build.yml) is kept
+# separate for signed/cloud builds.
+
+on:
+  push:
+    branches: [master]
+
+# A newer push to master supersedes an in-progress build.
+concurrency:
+  group: android-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build debug APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: gradle
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Managed project: generate the native android/ project from app.json.
+      # --no-install skips a redundant dependency install (done by npm ci above).
+      - name: Generate native Android project
+        run: npx expo prebuild --platform android --no-install
+
+      - name: Build debug APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug-${{ github.sha }}
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
