@@ -8,6 +8,7 @@ import { Button } from '@/components/Button';
 import { Card, importCards, listCards, moveCards } from '@/db/cards';
 import { deleteDeck, DeckWithCounts, getDeck, listDecksWithCounts, renameDeck } from '@/db/decks';
 import { parseSemicolonCsv } from '@/lib/csv';
+import { filterCards } from '@/lib/search';
 import { colors, levelColor, radius, spacing } from '@/theme';
 
 export default function DeckDetailScreen() {
@@ -23,6 +24,9 @@ export default function DeckDetailScreen() {
   const [renaming, setRenaming] = useState(false);
   const [draftName, setDraftName] = useState('');
   const [importing, setImporting] = useState(false);
+
+  // Live card search: narrows the list as the user types (no submit).
+  const [query, setQuery] = useState('');
 
   // Selection mode: pick cards to move into another deck.
   const [selecting, setSelecting] = useState(false);
@@ -44,6 +48,9 @@ export default function DeckDetailScreen() {
 
   const due = cards.filter((c) => c.due_at <= now).length;
   const learned = cards.length - due;
+
+  // Deck-wide stats above use the full `cards`; only the list below is filtered.
+  const visibleCards = filterCards(cards, query);
 
   async function handleRename() {
     const next = draftName.trim();
@@ -209,12 +216,44 @@ export default function DeckDetailScreen() {
       )}
 
       <Text style={styles.sectionLabel}>Cards</Text>
+      {cards.length > 0 ? (
+        <View style={styles.searchRow}>
+          <TextInput
+            style={[styles.input, styles.searchInput]}
+            value={query}
+            onChangeText={setQuery}
+            placeholder="Search cards"
+            placeholderTextColor={colors.textMuted}
+            autoCorrect={false}
+            autoCapitalize="none"
+            returnKeyType="search"
+          />
+          {query.length > 0 ? (
+            <Pressable
+              style={({ pressed }) => [styles.clearButton, pressed && styles.pressed]}
+              onPress={() => setQuery('')}
+              hitSlop={spacing.sm}
+              accessibilityRole="button"
+              accessibilityLabel="Clear search"
+            >
+              <Text style={styles.clearIcon}>✕</Text>
+            </Pressable>
+          ) : null}
+        </View>
+      ) : null}
       <FlatList
-        data={cards}
+        data={visibleCards}
         keyExtractor={(c) => String(c.id)}
         style={styles.list}
         contentContainerStyle={styles.listContent}
-        ListEmptyComponent={<Text style={styles.empty}>No cards yet. Add one or import a CSV.</Text>}
+        keyboardShouldPersistTaps="handled"
+        ListEmptyComponent={
+          query.trim() ? (
+            <Text style={styles.empty}>No cards match &ldquo;{query.trim()}&rdquo;.</Text>
+          ) : (
+            <Text style={styles.empty}>No cards yet. Add one or import a CSV.</Text>
+          )
+        }
         renderItem={({ item }) => {
           const isDue = item.due_at <= now;
           const isSelected = selectedIds.has(item.id);
@@ -334,6 +373,23 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.text,
   },
+  searchRow: { position: 'relative', justifyContent: 'center', marginBottom: spacing.sm },
+  // Standalone search box (the shared `input` is sized by its rename row);
+  // here it sits in a column, so cancel the flex stretch and give it height.
+  // paddingRight leaves room for the overlaid clear button.
+  searchInput: {
+    flex: 0,
+    paddingVertical: spacing.sm,
+    paddingRight: spacing.xl,
+  },
+  clearButton: {
+    position: 'absolute',
+    right: 0,
+    height: '100%',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.md,
+  },
+  clearIcon: { fontSize: 16, color: colors.textMuted, fontWeight: '600' },
   statsCard: {
     flexDirection: 'row',
     backgroundColor: colors.card,
