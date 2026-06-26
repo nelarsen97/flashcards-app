@@ -8,9 +8,8 @@ import Animated, {
   useDerivedValue,
   withTiming,
 } from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
 import { Button } from '@/components/Button';
+import { Screen } from '@/components/Screen';
 import { SpeakerButton } from '@/components/SpeakerButton';
 import { Card, getDueCards, rateCard, Rating } from '@/db/cards';
 import { colors, radius, spacing } from '@/theme';
@@ -35,7 +34,6 @@ export default function PracticeScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const deckId = Number(id);
   const router = useRouter();
-  const insets = useSafeAreaInsets();
 
   const [phase, setPhase] = useState<Phase>('loading');
   // The session deck: due cards snapshotted once at session start, randomized,
@@ -175,7 +173,7 @@ export default function PracticeScreen() {
     for (const level of Object.values(ratings)) tally[level] += 1;
     const reviewed = Object.keys(ratings).length;
     return (
-      <View style={[styles.container, { paddingBottom: insets.bottom + spacing.md }]}>
+      <Screen style={styles.container} bottomOffset={spacing.md}>
         <Stack.Screen options={{ title: 'Session summary' }} />
         <View style={styles.summaryCard}>
           <Text style={styles.summaryTitle}>
@@ -201,7 +199,7 @@ export default function PracticeScreen() {
           ) : null}
           <Button title="Done" variant="secondary" onPress={() => router.back()} />
         </View>
-      </View>
+      </Screen>
     );
   }
 
@@ -217,7 +215,7 @@ export default function PracticeScreen() {
     });
 
   return (
-    <View style={[styles.container, { paddingBottom: insets.bottom + spacing.md }]}>
+    <Screen style={styles.container} bottomOffset={spacing.md}>
       <Stack.Screen options={{ title: 'Practice' }} />
       <Text style={styles.progress}>
         {index + 1} / {batch.length}
@@ -240,7 +238,7 @@ export default function PracticeScreen() {
         <Button title="Fine" color={colors.fine} style={styles.ratingBtn} onPress={() => handleRate('fine')} />
         <Button title="Easy" color={colors.easy} style={styles.ratingBtn} onPress={() => handleRate('easy')} />
       </View>
-    </View>
+    </Screen>
   );
 }
 
@@ -304,7 +302,8 @@ function SummaryStat({ label, value, color }: { label: string; value: number; co
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: spacing.md },
+  // Bottom padding is owned by <Screen> (safe-area inset + spacing.md offset).
+  container: { paddingHorizontal: spacing.md, paddingTop: spacing.md },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   progress: {
     textAlign: 'center',

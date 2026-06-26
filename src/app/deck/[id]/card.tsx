@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { Button } from '@/components/Button';
+import { Screen } from '@/components/Screen';
 import { addCard, deleteCard, editCard, getCard } from '@/db/cards';
 import { colors, radius, spacing } from '@/theme';
 
@@ -75,48 +76,57 @@ export default function CardScreen() {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-      <Stack.Screen options={{ title: editingId != null ? 'Edit card' : 'Add card' }} />
+    <Screen>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+      >
+        <Stack.Screen options={{ title: editingId != null ? 'Edit card' : 'Add card' }} />
 
-      <Text style={styles.label}>Front</Text>
-      <TextInput
-        style={styles.input}
-        value={front}
-        onChangeText={setFront}
-        placeholder="Question / prompt"
-        placeholderTextColor={colors.textMuted}
-        multiline
-        autoFocus={editingId == null}
-      />
-
-      <Text style={styles.label}>Back</Text>
-      <TextInput
-        style={styles.input}
-        value={back}
-        onChangeText={setBack}
-        placeholder="Answer"
-        placeholderTextColor={colors.textMuted}
-        multiline
-      />
-
-      <View style={styles.actions}>
-        <Button
-          title={editingId != null ? 'Save changes' : 'Save card'}
-          onPress={handleSave}
-          disabled={!canSave}
-          loading={saving}
+        <Text style={styles.label}>Front</Text>
+        <TextInput
+          style={styles.input}
+          value={front}
+          onChangeText={setFront}
+          placeholder="Question / prompt"
+          placeholderTextColor={colors.textMuted}
+          multiline
+          autoFocus={editingId == null}
         />
-        {editingId == null ? (
-          <Button title="Save & add another" variant="secondary" onPress={handleSaveAndNew} disabled={!canSave} />
-        ) : (
-          <Button title="Delete card" variant="danger" onPress={confirmDelete} />
-        )}
-      </View>
-    </ScrollView>
+
+        <Text style={styles.label}>Back</Text>
+        <TextInput
+          style={styles.input}
+          value={back}
+          onChangeText={setBack}
+          placeholder="Answer"
+          placeholderTextColor={colors.textMuted}
+          multiline
+        />
+
+        <View style={styles.actions}>
+          <Button
+            title={editingId != null ? 'Save changes' : 'Save card'}
+            onPress={handleSave}
+            disabled={!canSave}
+            loading={saving}
+          />
+          {editingId == null ? (
+            <Button title="Save & add another" variant="secondary" onPress={handleSaveAndNew} disabled={!canSave} />
+          ) : (
+            <Button title="Delete card" variant="danger" onPress={confirmDelete} />
+          )}
+        </View>
+      </ScrollView>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
+  // flex:1 bounds the ScrollView inside <Screen> so its content can scroll and
+  // its end clears the nav bar via the Screen's safe-area inset.
+  scroll: { flex: 1 },
   container: { padding: spacing.md, gap: spacing.sm },
   label: { fontSize: 14, fontWeight: '700', color: colors.textMuted, marginTop: spacing.sm },
   input: {

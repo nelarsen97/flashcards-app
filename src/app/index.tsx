@@ -11,16 +11,15 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
+import { Screen } from '@/components/Screen';
 import { createDeck, DeckWithCounts, listDecksWithCounts } from '@/db/decks';
 import { exportAllToFile, importFromText, shareBackup } from '@/lib/backup';
 import { colors, radius, spacing } from '@/theme';
 
 export default function DecksScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const [decks, setDecks] = useState<DeckWithCounts[]>([]);
   const [newName, setNewName] = useState('');
   const [loading, setLoading] = useState(false);
@@ -101,7 +100,7 @@ export default function DecksScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <Screen style={styles.container}>
       <View style={styles.newRow}>
         <TextInput
           style={styles.input}
@@ -119,7 +118,7 @@ export default function DecksScreen() {
         data={decks}
         keyExtractor={(d) => String(d.id)}
         style={styles.list}
-        contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + spacing.xl }]}
+        contentContainerStyle={styles.listContent}
         ListEmptyComponent={
           <Text style={styles.empty}>No decks yet. Create one above to get started.</Text>
         }
@@ -163,14 +162,16 @@ export default function DecksScreen() {
           </Link>
         )}
       />
-    </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
+  // Bottom padding is owned by <Screen> (safe-area inset); the list adds its
+  // own scroll-end breathing room via listContent.
   container: {
-    flex: 1,
-    padding: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.md,
   },
   newRow: {
     flexDirection: 'row',

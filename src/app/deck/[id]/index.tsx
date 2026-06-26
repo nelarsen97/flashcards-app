@@ -5,6 +5,7 @@ import { useCallback, useState } from 'react';
 import { Alert, FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { Button } from '@/components/Button';
+import { Screen } from '@/components/Screen';
 import {
   Card,
   deleteCards,
@@ -193,7 +194,7 @@ export default function DeckDetailScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <Screen style={styles.container}>
       <Stack.Screen
         options={{
           title: selecting ? 'Select cards' : name || 'Deck',
@@ -513,7 +514,7 @@ export default function DeckDetailScreen() {
           </View>
         </Pressable>
       </Modal>
-    </View>
+    </Screen>
   );
 }
 
@@ -579,10 +580,11 @@ function Stat({
 }
 
 const styles = StyleSheet.create({
-  // No paddingBottom: a bottom padding here combined with the actions block's
-  // bottom margin is the padding+margin stack that trips Fabric's hit-rect calc
-  // on Android (facebook/react-native#53797). The list adds its own bottom inset.
-  container: { flex: 1, paddingHorizontal: spacing.md, paddingTop: spacing.sm },
+  // The bottom inset (so the action buttons clear Android's nav bar) is owned by
+  // the <Screen> wrapper. Don't add a paddingBottom here as well: that, stacked
+  // with a bottom margin on the actions block, is the padding+margin combo that
+  // trips Fabric's hit-rect calc on Android (facebook/react-native#53797).
+  container: { paddingHorizontal: spacing.md, paddingTop: spacing.sm },
   flex1: { flex: 1 },
   headerButton: { paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
   headerButtonIcon: { fontSize: 24, color: colors.text, fontWeight: '700', lineHeight: 24 },
