@@ -1,6 +1,6 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Platform, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Modal, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   runOnJS,
@@ -11,7 +11,7 @@ import Animated, {
 import { Button } from '@/components/Button';
 import { Screen } from '@/components/Screen';
 import { SpeakerButton } from '@/components/SpeakerButton';
-import { Card, getDueCards, rateCard, Rating } from '@/db/cards';
+import { Card, editCard, getDueCards, rateCard, Rating } from '@/db/cards';
 import { colors, radius, spacing } from '@/theme';
 
 const BATCH_SIZE = 10;
@@ -50,6 +50,15 @@ export default function PracticeScreen() {
   // How many due cards are left after this batch — sizes the next round and its
   // button label (capped at BATCH_SIZE).
   const [remainingDue, setRemainingDue] = useState(0);
+
+  // Inline card editing. `editing` is the card whose front/back is open in the
+  // modal (null = closed); the drafts hold the in-progress text. Tracking the
+  // card by identity (not the current index) keeps the save targeting the right
+  // card regardless of where the pencil was tapped.
+  const [editing, setEditing] = useState<Card | null>(null);
+  const [draftFront, setDraftFront] = useState('');
+  const [draftBack, setDraftBack] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
 
   // The cards sit side by side in a horizontal track, one viewport-width each;
   // `width` is measured on layout (0 until the first pass). The track slides by
@@ -145,6 +154,31 @@ export default function PracticeScreen() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [phase, goNext, goPrev]);
 
+  // Open the edit modal seeded with the tapped card's current text.
+  const openEdit = useCallback((card: Card) => {
+    setDraftFront(card.front);
+    setDraftBack(card.back);
+    setEditing(card);
+  }, []);
+
+  // Persist the edit and reflect it in the live batch so the card updates in
+  // place (same key, so PracticeCard re-renders without losing its flip state).
+  // Only front/back change; familiarity/due_at are untouched by editCard.
+  async function saveEdit() {
+    if (!editing || savingEdit) return;
+    const front = draftFront.trim();
+    const back = draftBack.trim();
+    if (!front || !back) return;
+    setSavingEdit(true);
+    try {
+      await editCard(editing.id, front, back);
+      setBatch((b) => b.map((c) => (c.id === editing.id ? { ...c, front, back } : c)));
+      setEditing(null);
+    } finally {
+      setSavingEdit(false);
+    }
+  }
+
   async function handleRate(level: Rating) {
     const card = batch[index];
     if (!card) return;
@@ -226,7 +260,7 @@ export default function PracticeScreen() {
           <GestureDetector gesture={pan}>
             <Animated.View style={[styles.track, { width: batch.length * width }, trackStyle]}>
               {batch.map((c) => (
-                <PracticeCard key={c.id} card={c} width={width} />
+                <PracticeCard key={c.id} card={c} width={width} onEdit={openEdit} />
               ))}
             </Animated.View>
           </GestureDetector>
@@ -238,6 +272,52 @@ export default function PracticeScreen() {
         <Button title="Fine" color={colors.fine} style={styles.ratingBtn} onPress={() => handleRate('fine')} />
         <Button title="Easy" color={colors.easy} style={styles.ratingBtn} onPress={() => handleRate('easy')} />
       </View>
+
+      <Modal
+        visible={editing !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setEditing(null)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Edit card</Text>
+            <Text style={styles.fieldLabel}>Front</Text>
+            <TextInput
+              style={styles.modalInput}
+              value={draftFront}
+              onChangeText={setDraftFront}
+              placeholder="Front"
+              placeholderTextColor={colors.textMuted}
+              multiline
+            />
+            <Text style={styles.fieldLabel}>Back</Text>
+            <TextInput
+              style={styles.modalInput}
+              value={draftBack}
+              onChangeText={setDraftBack}
+              placeholder="Back"
+              placeholderTextColor={colors.textMuted}
+              multiline
+            />
+            <View style={styles.modalActions}>
+              <Button
+                title="Cancel"
+                variant="secondary"
+                style={styles.flex1}
+                onPress={() => setEditing(null)}
+              />
+              <Button
+                title="Save"
+                style={styles.flex1}
+                onPress={saveEdit}
+                disabled={!draftFront.trim() || !draftBack.trim()}
+                loading={savingEdit}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
     </Screen>
   );
 }
@@ -246,7 +326,15 @@ export default function PracticeScreen() {
 // (so practice isn't always front-first), then retained — slide away and back and
 // it's still on the side you left it. The first tap turns on animation, so the
 // card flips smoothly without spinning itself when it first slides into view.
-function PracticeCard({ card, width }: { card: Card; width: number }) {
+function PracticeCard({
+  card,
+  width,
+  onEdit,
+}: {
+  card: Card;
+  width: number;
+  onEdit: (card: Card) => void;
+}) {
   // Number of half-turns; only ever increases, so each tap spins the card forward
   // the same way. Even = front showing, odd = back.
   const [flip, setFlip] = useState(() => (randomFace() ? 1 : 0));
@@ -262,14 +350,17 @@ function PracticeCard({ card, width }: { card: Card; width: number }) {
     setAnimate(true);
     setFlip((f) => f + 1);
   }, []);
-  // Each face's speaker button lives inside the card, under the flip's detector.
-  // Wrap each in a native gesture and make the flip wait for them to fail, so a
-  // tap on a speaker pronounces (and the press registers) instead of flipping.
+  // Each face's speaker and pencil buttons live inside the card, under the flip's
+  // detector. Wrap each in a native gesture and make the flip wait for them to
+  // fail, so a tap on a button runs its press (pronounce / edit) instead of
+  // flipping; taps elsewhere on the card still flip.
   const speakerFront = Gesture.Native();
   const speakerBack = Gesture.Native();
+  const pencilFront = Gesture.Native();
+  const pencilBack = Gesture.Native();
   const tap = Gesture.Tap()
     .onEnd(() => runOnJS(toggle)())
-    .requireExternalGestureToFail(speakerFront, speakerBack);
+    .requireExternalGestureToFail(speakerFront, speakerBack, pencilFront, pencilBack);
 
   const frontStyle = useAnimatedStyle(() => ({
     transform: [{ perspective: 1000 }, { rotateY: `${progress.value * 180}deg` }],
@@ -282,6 +373,11 @@ function PracticeCard({ card, width }: { card: Card; width: number }) {
     <GestureDetector gesture={tap}>
       <View style={[styles.cardSlot, { width }]}>
         <Animated.View style={[styles.face, frontStyle]} pointerEvents={showBack ? 'none' : 'auto'}>
+          <GestureDetector gesture={pencilFront}>
+            <View style={styles.pencil}>
+              <EditButton card={card} onEdit={onEdit} />
+            </View>
+          </GestureDetector>
           <GestureDetector gesture={speakerFront}>
             <View style={styles.speaker}>
               <SpeakerButton text={card.front} language="nb-NO" />
@@ -294,6 +390,11 @@ function PracticeCard({ card, width }: { card: Card; width: number }) {
           style={[styles.face, styles.faceBack, backStyle]}
           pointerEvents={showBack ? 'auto' : 'none'}
         >
+          <GestureDetector gesture={pencilBack}>
+            <View style={styles.pencil}>
+              <EditButton card={card} onEdit={onEdit} />
+            </View>
+          </GestureDetector>
           <GestureDetector gesture={speakerBack}>
             <View style={styles.speaker}>
               <SpeakerButton text={card.back} language="en-US" />
@@ -304,6 +405,24 @@ function PracticeCard({ card, width }: { card: Card; width: number }) {
         </Animated.View>
       </View>
     </GestureDetector>
+  );
+}
+
+// Pencil button at the bottom-left of a card face (mirror of the speaker button
+// at the bottom-right). Like the speaker, its caller wraps it in a Gesture.Native
+// the flip waits on, so a direct tap edits the card instead of flipping it; the
+// surrounding View owns the corner positioning.
+function EditButton({ card, onEdit }: { card: Card; onEdit: (card: Card) => void }) {
+  return (
+    <Pressable
+      onPress={() => onEdit(card)}
+      hitSlop={spacing.sm}
+      accessibilityRole="button"
+      accessibilityLabel="Edit card"
+      style={({ pressed }) => [styles.pencilButton, pressed && styles.pencilPressed]}
+    >
+      <Text style={styles.pencilIcon}>✏️</Text>
+    </Pressable>
   );
 }
 
@@ -361,6 +480,16 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bg,
   },
   speaker: { position: 'absolute', bottom: spacing.md, right: spacing.md },
+  pencil: { position: 'absolute', bottom: spacing.md, left: spacing.md },
+  pencilButton: {
+    width: 56,
+    height: 56,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pencilPressed: { backgroundColor: colors.bg },
+  pencilIcon: { fontSize: 26 },
   faceText: { fontSize: 24, fontWeight: '600', color: colors.text, textAlign: 'center' },
   tapHint: {
     position: 'absolute',
@@ -388,4 +517,31 @@ const styles = StyleSheet.create({
   summaryValue: { fontSize: 28, fontWeight: '700', textAlign: 'center' },
   summaryLabel: { fontSize: 14, color: colors.textMuted, marginTop: 2, textAlign: 'center' },
   summaryActions: { gap: spacing.sm, marginTop: spacing.lg },
+  flex1: { flex: 1 },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    padding: spacing.lg,
+  },
+  modalCard: {
+    backgroundColor: colors.card,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    gap: spacing.sm,
+  },
+  modalTitle: { fontSize: 18, fontWeight: '700', color: colors.text, marginBottom: spacing.xs },
+  fieldLabel: { fontSize: 14, fontWeight: '700', color: colors.textMuted },
+  modalInput: {
+    backgroundColor: colors.bg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    fontSize: 16,
+    color: colors.text,
+    minHeight: 80,
+    textAlignVertical: 'top',
+  },
+  modalActions: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm },
 });

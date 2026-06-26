@@ -1,7 +1,7 @@
 import { act, fireEvent, render } from '@testing-library/react-native';
 
 import PracticeScreen from '@/app/deck/[id]/practice';
-import { Card, getDueCards, rateCard } from '@/db/cards';
+import { Card, editCard, getDueCards, rateCard } from '@/db/cards';
 
 // expo-router: the screen reads the deck id from the route and only calls
 // router.back() from the Done button, which these tests don't exercise.
@@ -46,10 +46,12 @@ jest.mock('react-native-gesture-handler', () => {
 jest.mock('@/db/cards', () => ({
   getDueCards: jest.fn(),
   rateCard: jest.fn().mockResolvedValue(undefined),
+  editCard: jest.fn().mockResolvedValue(undefined),
 }));
 
 const mockedGetDueCards = getDueCards as jest.Mock;
 const mockedRateCard = rateCard as jest.Mock;
+const mockedEditCard = editCard as jest.Mock;
 
 // Build `n` due cards with distinct, identifiable fronts (front-0, front-1, …).
 const makeCards = (n: number): Card[] =>
@@ -148,6 +150,26 @@ describe('PracticeScreen', () => {
     const second = await render(<PracticeScreen />);
     await second.findByText('1 / 3');
     expect(mockedGetDueCards).toHaveBeenCalledTimes(2);
+  });
+
+  it('edits the current card front/back in place via the pencil', async () => {
+    mockedGetDueCards.mockResolvedValue(makeCards(1));
+
+    const screen = await render(<PracticeScreen />);
+    await screen.findByText('1 / 1');
+    await layoutViewport(screen);
+
+    // Open the editor from the card's pencil (front + back faces each carry one).
+    await fireEvent.press(screen.getAllByLabelText('Edit card')[0]);
+
+    // The modal is seeded with the card's current text; change the front and save.
+    await fireEvent.changeText(screen.getByDisplayValue('front-0'), 'hola');
+    await fireEvent.press(screen.getByText('Save'));
+
+    expect(mockedEditCard).toHaveBeenCalledWith(0, 'hola', 'back-0');
+    // The new text shows in place, without leaving the session.
+    await screen.findByText('hola');
+    expect(screen.getByText('1 / 1')).toBeTruthy();
   });
 
   it('shows the empty state when no cards are due', async () => {
