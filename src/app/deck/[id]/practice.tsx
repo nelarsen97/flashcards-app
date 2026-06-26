@@ -101,11 +101,10 @@ export default function PracticeScreen() {
 
   useEffect(() => {
     // Snapshot the due cards once for this session, then deal the first batch.
-    // The compiler lint can't tell this one-time data load apart from a
-    // render-loop setState, but it is deliberate, not derived state.
+    // `phase` already starts at 'loading', so the screen shows the spinner until
+    // this resolves — no synchronous setState needed here. `cancelled` guards
+    // against a resolve after unmount (exiting practice before the load lands).
     let cancelled = false;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setPhase('loading');
     getDueCards(deckId).then((cards) => {
       if (cancelled) return;
       queue.current = cards;
