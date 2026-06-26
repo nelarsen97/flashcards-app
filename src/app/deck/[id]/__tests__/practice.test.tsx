@@ -154,22 +154,39 @@ describe('PracticeScreen', () => {
 
   it('edits the current card front/back in place via the pencil', async () => {
     mockedGetDueCards.mockResolvedValue(makeCards(1));
+    // Force the card to start front-up so the front face is the interactive one
+    // (the hidden face has pointerEvents="none"). randomFace() shows the back when
+    // Math.random() < 0.5, so a high value keeps the front showing.
+    const randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0.99);
 
-    const screen = await render(<PracticeScreen />);
-    await screen.findByText('1 / 1');
-    await layoutViewport(screen);
+    try {
+      const screen = await render(<PracticeScreen />);
+      await screen.findByText('1 / 1');
+      await layoutViewport(screen);
 
-    // Open the editor from the card's pencil (front + back faces each carry one).
-    await fireEvent.press(screen.getAllByLabelText('Edit card')[0]);
+      // Open the editor from the front face's pencil (each face carries one).
+      await fireEvent.press(screen.getAllByLabelText('Edit card')[0]);
 
-    // The modal is seeded with the card's current text; change the front and save.
-    await fireEvent.changeText(screen.getByDisplayValue('front-0'), 'hola');
-    await fireEvent.press(screen.getByText('Save'));
+      // The modal is seeded with the card's current text; change the front and save.
+      await fireEvent.changeText(screen.getByDisplayValue('front-0'), 'hola');
+      await fireEvent.press(screen.getByText('Save'));
 
-    expect(mockedEditCard).toHaveBeenCalledWith(0, 'hola', 'back-0');
-    // The new text shows in place, without leaving the session.
-    await screen.findByText('hola');
-    expect(screen.getByText('1 / 1')).toBeTruthy();
+      // Only front/back are written, and exactly once — id, deck, familiarity,
+      // due_at and created_at are not part of the edit.
+      expect(mockedEditCard).toHaveBeenCalledTimes(1);
+      expect(mockedEditCard).toHaveBeenCalledWith(0, 'hola', 'back-0');
+      // Editing must not rate the card — rateCard is the only path that would move
+      // familiarity / due_at, so its absence proves scheduling is untouched.
+      expect(mockedRateCard).not.toHaveBeenCalled();
+
+      // The new front shows in place; the back is unchanged and the session stays
+      // put (same card, same position) — nothing else moved.
+      await screen.findByText('hola');
+      expect(screen.getByText('back-0')).toBeTruthy();
+      expect(screen.getByText('1 / 1')).toBeTruthy();
+    } finally {
+      randomSpy.mockRestore();
+    }
   });
 
   it('shows the empty state when no cards are due', async () => {
