@@ -34,6 +34,9 @@ export default function DeckDetailScreen() {
   const [group, setGroup] = useState<LevelGroup | null>(null);
   const [levelMenuVisible, setLevelMenuVisible] = useState(false);
 
+  // Header overflow (⋯) menu holding the deck-management actions.
+  const [menuVisible, setMenuVisible] = useState(false);
+
   // Selection mode: pick cards to move into another deck.
   const [selecting, setSelecting] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
@@ -162,7 +165,24 @@ export default function DeckDetailScreen() {
 
   return (
     <View style={styles.container}>
-      <Stack.Screen options={{ title: selecting ? 'Select cards' : name || 'Deck' }} />
+      <Stack.Screen
+        options={{
+          title: selecting ? 'Select cards' : name || 'Deck',
+          headerRight: selecting
+            ? undefined
+            : () => (
+                <Pressable
+                  style={({ pressed }) => [styles.headerButton, pressed && styles.pressed]}
+                  onPress={() => setMenuVisible(true)}
+                  hitSlop={spacing.sm}
+                  accessibilityRole="button"
+                  accessibilityLabel="Deck options"
+                >
+                  <Text style={styles.headerButtonIcon}>⋯</Text>
+                </Pressable>
+              ),
+        }}
+      />
 
       {renaming ? (
         <View style={styles.renameRow}>
@@ -177,6 +197,102 @@ export default function DeckDetailScreen() {
           />
           <Button title="Save" onPress={handleRename} disabled={!draftName.trim()} />
           <Button title="Cancel" variant="secondary" onPress={() => setRenaming(false)} />
+        </View>
+      ) : null}
+
+      <FlatList
+        data={visibleCards}
+        keyExtractor={(c) => String(c.id)}
+        style={styles.list}
+        contentContainerStyle={styles.listContent}
+        keyboardShouldPersistTaps="handled"
+        ListEmptyComponent={
+          hasActiveFilter ? (
+            <View style={styles.emptyFilter}>
+              <Text style={styles.empty}>No cards match your filters.</Text>
+              <Button title="Clear filters" variant="secondary" onPress={clearFilters} />
+            </View>
+          ) : (
+            <Text style={styles.empty}>No cards yet. Add one or import a CSV.</Text>
+          )
+        }
+        renderItem={({ item }) => {
+          const isDue = item.due_at <= now;
+          const isSelected = selectedIds.has(item.id);
+          return (
+            <Pressable
+              style={({ pressed }) => [styles.cardRow, pressed && styles.pressed]}
+              onPress={() =>
+                selecting
+                  ? toggleSelected(item.id)
+                  : router.push(`/deck/${deckId}/card?cardId=${item.id}`)
+              }
+            >
+              <View style={styles.flex1}>
+                <Text style={styles.cardFront} numberOfLines={1}>
+                  {item.front}
+                </Text>
+                <Text style={styles.cardBack} numberOfLines={1}>
+                  {item.back}
+                </Text>
+              </View>
+              {selecting ? (
+                <View style={[styles.checkbox, isSelected && styles.checkboxOn]}>
+                  {isSelected ? <Text style={styles.checkboxMark}>✓</Text> : null}
+                </View>
+              ) : (
+                <View style={styles.levelInfo}>
+                  {isDue ? <View style={styles.dueDot} /> : null}
+                  <View style={[styles.levelBadge, { backgroundColor: levelColor(item.familiarity) }]}>
+                    <Text style={styles.levelText}>Lvl {item.familiarity}</Text>
+                  </View>
+                </View>
+              )}
+            </Pressable>
+          );
+        }}
+      />
+
+      {cards.length > 0 ? (
+        <View style={styles.searchRow}>
+          <View style={styles.searchInputWrap}>
+            <TextInput
+              style={[styles.input, styles.searchInput]}
+              value={query}
+              onChangeText={setQuery}
+              placeholder="Search cards"
+              placeholderTextColor={colors.textMuted}
+              autoCorrect={false}
+              autoCapitalize="none"
+              returnKeyType="search"
+            />
+            {query.length > 0 ? (
+              <Pressable
+                style={({ pressed }) => [styles.clearButton, pressed && styles.pressed]}
+                onPress={() => setQuery('')}
+                hitSlop={spacing.sm}
+                accessibilityRole="button"
+                accessibilityLabel="Clear search"
+              >
+                <Text style={styles.clearIcon}>✕</Text>
+              </Pressable>
+            ) : null}
+          </View>
+          <Pressable
+            style={({ pressed }) => [
+              styles.levelChip,
+              group !== null && styles.levelChipActive,
+              pressed && styles.pressed,
+            ]}
+            onPress={() => setLevelMenuVisible(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Filter by level"
+          >
+            <Text style={[styles.levelChipText, group !== null && styles.levelChipTextActive]}>
+              {group !== null ? LEVEL_GROUPS.find((g) => g.key === group)?.label : 'Level'}
+            </Text>
+            <Text style={[styles.levelChipCaret, group !== null && styles.levelChipTextActive]}>▾</Text>
+          </Pressable>
         </View>
       ) : null}
 
@@ -235,134 +351,58 @@ export default function DeckDetailScreen() {
               onPress={() => router.push(`/deck/${deckId}/card`)}
             />
             <Button
-              title="Import CSV"
+              title="Select cards"
               variant="secondary"
               style={styles.flex1}
-              onPress={handleImport}
-              loading={importing}
+              onPress={startSelecting}
+              disabled={cards.length === 0}
             />
           </View>
-          <Button
-            title="Select cards"
-            variant="secondary"
-            onPress={startSelecting}
-            disabled={cards.length === 0}
-          />
         </View>
       )}
 
-      <View style={styles.cardsHeader}>
-        <Text style={styles.sectionLabel}>Cards</Text>
-        {cards.length > 0 ? (
-          <Pressable
-            style={({ pressed }) => [
-              styles.levelChip,
-              group !== null && styles.levelChipActive,
-              pressed && styles.pressed,
-            ]}
-            onPress={() => setLevelMenuVisible(true)}
-            accessibilityRole="button"
-            accessibilityLabel="Filter by level"
-          >
-            <Text style={[styles.levelChipText, group !== null && styles.levelChipTextActive]}>
-              {group !== null ? LEVEL_GROUPS.find((g) => g.key === group)?.label : 'Level'}
-            </Text>
-            <Text style={[styles.levelChipCaret, group !== null && styles.levelChipTextActive]}>▾</Text>
-          </Pressable>
-        ) : null}
-      </View>
-      {cards.length > 0 ? (
-        <View style={styles.searchRow}>
-          <TextInput
-            style={[styles.input, styles.searchInput]}
-            value={query}
-            onChangeText={setQuery}
-            placeholder="Search cards"
-            placeholderTextColor={colors.textMuted}
-            autoCorrect={false}
-            autoCapitalize="none"
-            returnKeyType="search"
-          />
-          {query.length > 0 ? (
+      <Modal
+        visible={menuVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setMenuVisible(false)}
+      >
+        <Pressable style={styles.menuBackdrop} onPress={() => setMenuVisible(false)}>
+          <View style={styles.menuCard}>
             <Pressable
-              style={({ pressed }) => [styles.clearButton, pressed && styles.pressed]}
-              onPress={() => setQuery('')}
-              hitSlop={spacing.sm}
+              style={({ pressed }) => [styles.menuItem, pressed && styles.pressed]}
+              onPress={() => {
+                setMenuVisible(false);
+                setDraftName(name);
+                setRenaming(true);
+              }}
               accessibilityRole="button"
-              accessibilityLabel="Clear search"
             >
-              <Text style={styles.clearIcon}>✕</Text>
+              <Text style={styles.menuItemText}>Rename deck</Text>
             </Pressable>
-          ) : null}
-        </View>
-      ) : null}
-      <FlatList
-        data={visibleCards}
-        keyExtractor={(c) => String(c.id)}
-        style={styles.list}
-        contentContainerStyle={styles.listContent}
-        keyboardShouldPersistTaps="handled"
-        ListEmptyComponent={
-          hasActiveFilter ? (
-            <View style={styles.emptyFilter}>
-              <Text style={styles.empty}>No cards match your filters.</Text>
-              <Button title="Clear filters" variant="secondary" onPress={clearFilters} />
-            </View>
-          ) : (
-            <Text style={styles.empty}>No cards yet. Add one or import a CSV.</Text>
-          )
-        }
-        renderItem={({ item }) => {
-          const isDue = item.due_at <= now;
-          const isSelected = selectedIds.has(item.id);
-          return (
             <Pressable
-              style={({ pressed }) => [styles.cardRow, pressed && styles.pressed]}
-              onPress={() =>
-                selecting
-                  ? toggleSelected(item.id)
-                  : router.push(`/deck/${deckId}/card?cardId=${item.id}`)
-              }
+              style={({ pressed }) => [styles.menuItem, pressed && styles.pressed]}
+              onPress={() => {
+                setMenuVisible(false);
+                handleImport();
+              }}
+              accessibilityRole="button"
             >
-              <View style={styles.flex1}>
-                <Text style={styles.cardFront} numberOfLines={1}>
-                  {item.front}
-                </Text>
-                <Text style={styles.cardBack} numberOfLines={1}>
-                  {item.back}
-                </Text>
-              </View>
-              {selecting ? (
-                <View style={[styles.checkbox, isSelected && styles.checkboxOn]}>
-                  {isSelected ? <Text style={styles.checkboxMark}>✓</Text> : null}
-                </View>
-              ) : (
-                <View style={styles.levelInfo}>
-                  {isDue ? <View style={styles.dueDot} /> : null}
-                  <View style={[styles.levelBadge, { backgroundColor: levelColor(item.familiarity) }]}>
-                    <Text style={styles.levelText}>Lvl {item.familiarity}</Text>
-                  </View>
-                </View>
-              )}
+              <Text style={styles.menuItemText}>Import CSV</Text>
             </Pressable>
-          );
-        }}
-        ListFooterComponent={
-          selecting ? null : (
-            <View style={styles.footer}>
-              <Button
-                title="Rename deck"
-                variant="secondary"
-                onPress={() => {
-                  setDraftName(name);
-                  setRenaming(true);
-                }}
-              />
-              <Button title="Delete deck" variant="danger" onPress={confirmDelete} />
-            </View>
-          )
-        }
-      />
+            <Pressable
+              style={({ pressed }) => [styles.menuItem, pressed && styles.pressed]}
+              onPress={() => {
+                setMenuVisible(false);
+                confirmDelete();
+              }}
+              accessibilityRole="button"
+            >
+              <Text style={[styles.menuItemText, styles.menuItemDanger]}>Delete deck</Text>
+            </Pressable>
+          </View>
+        </Pressable>
+      </Modal>
 
       <Modal
         visible={pickerVisible}
@@ -502,8 +542,10 @@ const styles = StyleSheet.create({
   // No paddingBottom: a bottom padding here combined with the actions block's
   // bottom margin is the padding+margin stack that trips Fabric's hit-rect calc
   // on Android (facebook/react-native#53797). The list adds its own bottom inset.
-  container: { flex: 1, paddingHorizontal: spacing.md, paddingTop: spacing.md },
+  container: { flex: 1, paddingHorizontal: spacing.md, paddingTop: spacing.sm },
   flex1: { flex: 1 },
+  headerButton: { paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
+  headerButtonIcon: { fontSize: 24, color: colors.text, fontWeight: '700', lineHeight: 24 },
   renameRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md, flexWrap: 'wrap' },
   input: {
     flex: 1,
@@ -516,7 +558,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.text,
   },
-  searchRow: { position: 'relative', justifyContent: 'center', marginBottom: spacing.sm },
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  searchInputWrap: { flex: 1, position: 'relative', justifyContent: 'center' },
   // Standalone search box (the shared `input` is sized by its rename row);
   // here it sits in a column, so cancel the flex stretch and give it height.
   // paddingRight leaves room for the overlaid clear button.
@@ -540,25 +589,15 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: radius.md,
     padding: spacing.xs,
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   stat: { flex: 1, paddingVertical: spacing.sm + 2, borderRadius: radius.sm },
   statActive: { backgroundColor: colors.bg },
   statValue: { fontSize: 24, fontWeight: '700', color: colors.text, textAlign: 'center' },
   statLabel: { fontSize: 13, color: colors.textMuted, marginTop: 2, textAlign: 'center' },
   statLabelActive: { color: colors.text, fontWeight: '700' },
-  // marginBottom moved off the buttons' container onto the (non-interactive)
-  // section label below, so the actions block no longer carries an outer margin.
   actions: { gap: spacing.sm },
   actionRow: { flexDirection: 'row', gap: spacing.sm },
-  cardsHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: spacing.lg,
-    marginBottom: spacing.sm,
-  },
-  sectionLabel: { fontSize: 14, fontWeight: '700', color: colors.textMuted },
   levelChip: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -575,7 +614,7 @@ const styles = StyleSheet.create({
   levelChipTextActive: { color: colors.primary },
   levelChipCaret: { fontSize: 11, color: colors.textMuted },
   list: { flex: 1 },
-  listContent: { gap: spacing.sm, paddingBottom: spacing.xl },
+  listContent: { gap: spacing.sm, paddingBottom: spacing.sm },
   empty: { textAlign: 'center', color: colors.textMuted, marginTop: spacing.lg },
   emptyFilter: { gap: spacing.md, alignItems: 'center' },
   cardRow: {
@@ -594,7 +633,6 @@ const styles = StyleSheet.create({
   dueDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.primary },
   levelBadge: { paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: radius.sm },
   levelText: { color: colors.primaryText, fontSize: 12, fontWeight: '700' },
-  footer: { gap: spacing.sm, marginTop: spacing.lg },
   selectionCount: { fontSize: 15, fontWeight: '600', color: colors.text, textAlign: 'center' },
   checkbox: {
     width: 24,
@@ -642,6 +680,19 @@ const styles = StyleSheet.create({
     minWidth: 220,
     alignSelf: 'center',
   },
+  // Overflow (⋯) menu anchored under the header's top-right corner.
+  menuBackdrop: { flex: 1, alignItems: 'flex-end', paddingTop: spacing.xs, paddingRight: spacing.sm },
+  menuCard: {
+    backgroundColor: colors.card,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingVertical: spacing.xs,
+    minWidth: 180,
+  },
+  menuItem: { paddingVertical: spacing.sm, paddingHorizontal: spacing.md },
+  menuItemText: { fontSize: 15, color: colors.text },
+  menuItemDanger: { color: colors.danger },
   levelOption: {
     flexDirection: 'row',
     alignItems: 'center',
