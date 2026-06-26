@@ -35,10 +35,11 @@ jest.mock('react-native-gesture-handler', () => {
   const builder: Record<string, () => unknown> = {};
   builder.onEnd = () => builder;
   builder.activeOffsetX = () => builder;
+  builder.requireExternalGestureToFail = () => builder;
   const make = () => builder;
   return {
     GestureDetector: ({ children }: { children: React.ReactNode }) => children,
-    Gesture: { Tap: make, Pan: make, Race: make },
+    Gesture: { Tap: make, Pan: make, Race: make, Native: make },
   };
 });
 

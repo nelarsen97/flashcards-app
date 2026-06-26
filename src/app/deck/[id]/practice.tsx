@@ -262,7 +262,14 @@ function PracticeCard({ card, width }: { card: Card; width: number }) {
     setAnimate(true);
     setFlip((f) => f + 1);
   }, []);
-  const tap = Gesture.Tap().onEnd(() => runOnJS(toggle)());
+  // Each face's speaker button lives inside the card, under the flip's detector.
+  // Wrap each in a native gesture and make the flip wait for them to fail, so a
+  // tap on a speaker pronounces (and the press registers) instead of flipping.
+  const speakerFront = Gesture.Native();
+  const speakerBack = Gesture.Native();
+  const tap = Gesture.Tap()
+    .onEnd(() => runOnJS(toggle)())
+    .requireExternalGestureToFail(speakerFront, speakerBack);
 
   const frontStyle = useAnimatedStyle(() => ({
     transform: [{ perspective: 1000 }, { rotateY: `${progress.value * 180}deg` }],
@@ -275,7 +282,11 @@ function PracticeCard({ card, width }: { card: Card; width: number }) {
     <GestureDetector gesture={tap}>
       <View style={[styles.cardSlot, { width }]}>
         <Animated.View style={[styles.face, frontStyle]} pointerEvents={showBack ? 'none' : 'auto'}>
-          <SpeakerButton text={card.front} language="nb-NO" style={styles.speaker} />
+          <GestureDetector gesture={speakerFront}>
+            <View style={styles.speaker}>
+              <SpeakerButton text={card.front} language="nb-NO" />
+            </View>
+          </GestureDetector>
           <Text style={styles.faceText}>{card.front}</Text>
           <Text style={styles.tapHint}>Tap to flip · swipe to navigate</Text>
         </Animated.View>
@@ -283,7 +294,11 @@ function PracticeCard({ card, width }: { card: Card; width: number }) {
           style={[styles.face, styles.faceBack, backStyle]}
           pointerEvents={showBack ? 'auto' : 'none'}
         >
-          <SpeakerButton text={card.back} language="en-US" style={styles.speaker} />
+          <GestureDetector gesture={speakerBack}>
+            <View style={styles.speaker}>
+              <SpeakerButton text={card.back} language="en-US" />
+            </View>
+          </GestureDetector>
           <Text style={styles.faceText}>{card.back}</Text>
           <Text style={styles.tapHint}>Tap to flip · swipe to navigate</Text>
         </Animated.View>
