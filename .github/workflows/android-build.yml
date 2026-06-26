@@ -65,6 +65,19 @@ jobs:
       - name: Set up Gradle caching
         uses: gradle/actions/setup-gradle@v4
 
+      # Installs ccache and persists ~/.ccache in the GitHub Actions cache (the
+      # per-repo 10 GB pool, same place as the Gradle cache above). ccache caches
+      # native C/C++ object files by source-content hash, which is the one big
+      # cost the Gradle build cache can't touch — the NDK compiles for
+      # react-native-reanimated/worklets/gesture-handler/expo-modules-core and
+      # :app. The CMAKE_*_COMPILER_LAUNCHER env vars on the build step below tell
+      # every module's CMake build to route its compiler through ccache.
+      - name: Set up ccache
+        uses: hendrikmuhs/ccache-action@v1
+        with:
+          key: android-arm64
+          max-size: 500M
+
       # Give every CI build a unique, increasing versionCode (the workflow run
       # number) so a new APK installs as an in-place update over the previous CI
       # build instead of being rejected with "package version matches installed
@@ -88,6 +101,14 @@ jobs:
       # won't install on x86/x86_64 emulators.
       - name: Build release APK
         working-directory: android
+        # CMake initializes each module's compiler launcher from these env vars
+        # the first time its build tree is configured, so every native (NDK)
+        # module compiles through ccache. CCACHE_SLOPPINESS lets time/date macros
+        # in sources still hit the cache.
+        env:
+          CMAKE_C_COMPILER_LAUNCHER: ccache
+          CMAKE_CXX_COMPILER_LAUNCHER: ccache
+          CCACHE_SLOPPINESS: time_macros,include_file_mtime,include_file_ctime
         run: |
           chmod +x gradlew
           ./gradlew assembleRelease --no-daemon --build-cache -PreactNativeArchitectures=arm64-v8a
