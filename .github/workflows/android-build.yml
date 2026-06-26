@@ -1,14 +1,21 @@
 name: Android APK (CI)
 
-# Builds an installable debug APK on the GitHub runner itself via Gradle — no
-# EAS servers, so this spends GitHub Actions minutes (free on public repos),
-# not EAS build credits. Runs on every push to master; grab the APK from the
-# run's "Artifacts" section. The manual EAS workflow (eas-build.yml) is kept
-# separate for signed/cloud builds.
+# Builds an installable *release* APK on the GitHub runner via Gradle (no EAS
+# servers — this spends GitHub Actions minutes, not EAS build credits) and
+# publishes it to a rolling "ci-latest" GitHub Release so it can be downloaded
+# straight to a phone as a raw .apk (Actions artifacts only download as a .zip).
+#
+# Release is signed with the debug keystore the Expo template wires into the
+# release build type, so it installs without any secrets. The manual EAS Build
+# workflow (eas-build.yml) is kept separate for cloud builds.
 
 on:
   push:
     branches: [master]
+
+# Needed so the workflow's GITHUB_TOKEN can create/update the GitHub Release.
+permissions:
+  contents: write
 
 # A newer push to master supersedes an in-progress build.
 concurrency:
@@ -17,7 +24,7 @@ concurrency:
 
 jobs:
   build:
-    name: Build debug APK
+    name: Build release APK
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -45,15 +52,30 @@ jobs:
           java-version: 17
           cache: gradle
 
-      - name: Build debug APK
+      # Release build: shrunk + stripped + self-contained (embeds the JS bundle),
+      # so it actually runs standalone. Signed with the template's debug keystore.
+      - name: Build release APK
         working-directory: android
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+          ./gradlew assembleRelease --no-daemon
 
-      - name: Upload APK
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: app-debug-${{ github.sha }}
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: app-release-${{ github.sha }}
+          path: android/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
+
+      # Publish to a rolling prerelease so the download URL is stable:
+      # https://github.com/<owner>/<repo>/releases/download/ci-latest/app-release.apk
+      - name: Publish APK to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ci-latest
+          name: Latest CI build
+          prerelease: true
+          files: android/app/build/outputs/apk/release/app-release.apk
+          body: |
+            Automated debug-signed release APK from the latest push to master.
+            Commit: ${{ github.sha }}
