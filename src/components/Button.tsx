@@ -1,6 +1,6 @@
 import { ActivityIndicator, Pressable, StyleSheet, Text, ViewStyle } from 'react-native';
 
-import { colors, radius, spacing } from '@/theme';
+import { colors, fonts, radius, shadow, spacing } from '@/theme';
 
 type Variant = 'primary' | 'secondary' | 'danger';
 
@@ -26,6 +26,8 @@ export function Button({
 }: ButtonProps) {
   const isSecondary = variant === 'secondary';
   const bg = color ?? (variant === 'danger' ? colors.danger : isSecondary ? colors.card : colors.primary);
+  // Everything but the bordered secondary button rides a pastel/yellow fill, so
+  // graphite ink keeps the label legible.
   const fg = isSecondary ? colors.text : colors.primaryText;
 
   return (
@@ -58,18 +60,19 @@ const styles = StyleSheet.create({
     // label, so only taps "near the text" register. A plain height + centered
     // content keeps the whole button pressable. See facebook/react-native#53797.
     height: 52,
-    borderRadius: radius.md,
+    borderRadius: radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: spacing.lg,
+    ...shadow.card,
   },
   secondaryBorder: {
     borderWidth: 1,
     borderColor: colors.border,
   },
   label: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 17,
+    fontFamily: fonts.bodyBold,
   },
   disabled: {
     opacity: 0.5,

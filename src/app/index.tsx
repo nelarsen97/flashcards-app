@@ -16,7 +16,7 @@ import { Button } from '@/components/Button';
 import { Screen } from '@/components/Screen';
 import { createDeck, DeckWithCounts, listDecksWithCounts } from '@/db/decks';
 import { exportAllToFile, importFromText, shareBackup } from '@/lib/backup';
-import { colors, radius, spacing } from '@/theme';
+import { colors, fonts, radius, shadow, spacing } from '@/theme';
 
 export default function DecksScreen() {
   const router = useRouter();
@@ -197,13 +197,14 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     paddingHorizontal: spacing.md,
     fontSize: 16,
+    fontFamily: fonts.body,
     color: colors.text,
   },
   list: {
     flex: 1,
   },
   listContent: {
-    gap: spacing.sm,
+    gap: spacing.md,
     paddingBottom: spacing.xl,
   },
   flex1: { flex: 1 },
@@ -212,8 +213,8 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   dataLabel: {
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 16,
+    fontFamily: fonts.heading,
     color: colors.textMuted,
   },
   dataRow: {
@@ -224,7 +225,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: colors.textMuted,
     marginTop: spacing.xl,
-    fontSize: 15,
+    fontSize: 16,
+    fontFamily: fonts.body,
   },
   deckRow: {
     flexDirection: 'row',
@@ -234,6 +236,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: radius.md,
     padding: spacing.md,
+    ...shadow.card,
   },
   pressed: {
     opacity: 0.7,
@@ -243,13 +246,14 @@ const styles = StyleSheet.create({
     marginRight: spacing.md,
   },
   deckName: {
-    fontSize: 17,
-    fontWeight: '600',
+    fontSize: 22,
+    fontFamily: fonts.heading,
     color: colors.text,
   },
   deckMeta: {
     marginTop: 2,
     fontSize: 13,
+    fontFamily: fonts.body,
     color: colors.textMuted,
   },
   dueBadge: {
@@ -258,23 +262,25 @@ const styles = StyleSheet.create({
   practiceButton: {
     marginLeft: spacing.sm,
     backgroundColor: colors.primary,
-    borderRadius: radius.md,
+    borderRadius: radius.pill,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
+    ...shadow.card,
   },
   practiceButtonText: {
     color: colors.primaryText,
     fontSize: 14,
-    fontWeight: '700',
+    fontFamily: fonts.bodyBold,
   },
   dueNumber: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: colors.primary,
+    fontSize: 22,
+    fontFamily: fonts.bodyExtra,
+    color: colors.ferrule,
     textAlign: 'center',
   },
   dueLabel: {
     fontSize: 12,
+    fontFamily: fonts.body,
     color: colors.textMuted,
     textAlign: 'center',
   },

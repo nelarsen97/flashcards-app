@@ -18,7 +18,7 @@ import {
 import { deleteDeck, DeckWithCounts, getDeck, listDecksWithCounts, renameDeck } from '@/db/decks';
 import { parseSemicolonCsv } from '@/lib/csv';
 import { applyCardFilters, CardStatus } from '@/lib/search';
-import { colors, levelColor, radius, spacing } from '@/theme';
+import { colors, fonts, levelColor, radius, shadow, spacing } from '@/theme';
 
 export default function DeckDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -573,7 +573,7 @@ function Stat({
       accessibilityState={{ selected: active, disabled }}
       accessibilityLabel={`Filter by ${label}`}
     >
-      <Text style={[styles.statValue, highlight && { color: colors.primary }]}>{value}</Text>
+      <Text style={[styles.statValue, highlight && { color: colors.ferrule }]}>{value}</Text>
       <Text style={[styles.statLabel, active && styles.statLabelActive]}>{label}</Text>
     </Pressable>
   );
@@ -598,6 +598,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     paddingHorizontal: spacing.md,
     fontSize: 16,
+    fontFamily: fonts.body,
     color: colors.text,
   },
   searchRow: {
@@ -632,12 +633,13 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     padding: spacing.xs,
     marginBottom: spacing.sm,
+    ...shadow.card,
   },
   stat: { flex: 1, paddingVertical: spacing.sm + 2, borderRadius: radius.sm },
   statActive: { backgroundColor: colors.bg },
-  statValue: { fontSize: 24, fontWeight: '700', color: colors.text, textAlign: 'center' },
-  statLabel: { fontSize: 13, color: colors.textMuted, marginTop: 2, textAlign: 'center' },
-  statLabelActive: { color: colors.text, fontWeight: '700' },
+  statValue: { fontSize: 24, fontFamily: fonts.bodyExtra, color: colors.text, textAlign: 'center' },
+  statLabel: { fontSize: 13, fontFamily: fonts.body, color: colors.textMuted, marginTop: 2, textAlign: 'center' },
+  statLabelActive: { color: colors.text, fontFamily: fonts.bodyBold },
   actions: { gap: spacing.sm },
   actionRow: { flexDirection: 'row', gap: spacing.sm },
   levelChip: {
@@ -647,18 +649,18 @@ const styles = StyleSheet.create({
     backgroundColor: colors.card,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.sm,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
   },
-  levelChipActive: { borderColor: colors.primary, backgroundColor: colors.bg },
-  levelChipText: { fontSize: 13, fontWeight: '600', color: colors.textMuted },
-  levelChipTextActive: { color: colors.primary },
+  levelChipActive: { borderColor: colors.ferrule, backgroundColor: colors.bg },
+  levelChipText: { fontSize: 13, fontFamily: fonts.bodyMedium, color: colors.textMuted },
+  levelChipTextActive: { color: colors.ferrule },
   levelChipCaret: { fontSize: 11, color: colors.textMuted },
   list: { flex: 1 },
   listContent: { gap: spacing.sm, paddingBottom: spacing.sm },
   cardColumn: { gap: spacing.sm },
-  empty: { textAlign: 'center', color: colors.textMuted, marginTop: spacing.lg },
+  empty: { textAlign: 'center', color: colors.textMuted, marginTop: spacing.lg, fontFamily: fonts.body },
   emptyFilter: { gap: spacing.md, alignItems: 'center' },
   // Two-column grid tile. maxWidth caps a lone trailing card at half width so
   // it lines up with the column above instead of stretching across the row.
@@ -670,17 +672,18 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: radius.md,
     padding: spacing.md,
+    ...shadow.card,
   },
   pressed: { opacity: 0.7 },
-  cardFront: { fontSize: 16, fontWeight: '600', color: colors.text },
-  cardBack: { fontSize: 14, color: colors.textMuted, marginTop: 2 },
+  cardFront: { fontSize: 19, fontFamily: fonts.heading, color: colors.text },
+  cardBack: { fontSize: 14, fontFamily: fonts.body, color: colors.textMuted, marginTop: 2 },
   // Pinned to the bottom of the tile (text block above takes the flex space).
   cardCellFooter: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginTop: spacing.sm },
   cardCellFooterEnd: { justifyContent: 'flex-end' },
-  dueDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.primary },
+  dueDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.ferrule },
   levelBadge: { paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: radius.sm },
-  levelText: { color: colors.primaryText, fontSize: 12, fontWeight: '700' },
-  selectionCount: { fontSize: 15, fontWeight: '600', color: colors.text, textAlign: 'center' },
+  levelText: { color: colors.text, fontSize: 12, fontFamily: fonts.bodyBold },
+  selectionCount: { fontSize: 15, fontFamily: fonts.bodyBold, color: colors.text, textAlign: 'center' },
   checkbox: {
     width: 24,
     height: 24,
@@ -692,7 +695,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   checkboxOn: { backgroundColor: colors.primary, borderColor: colors.primary },
-  checkboxMark: { color: colors.primaryText, fontSize: 14, fontWeight: '700' },
+  checkboxMark: { color: colors.primaryText, fontSize: 14, fontFamily: fonts.bodyBold },
   modalBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.4)',
@@ -706,8 +709,8 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     maxHeight: '70%',
   },
-  modalTitle: { fontSize: 18, fontWeight: '700', color: colors.text, marginBottom: spacing.xs },
-  modalEmpty: { color: colors.textMuted, textAlign: 'center', paddingVertical: spacing.lg },
+  modalTitle: { fontSize: 22, fontFamily: fonts.heading, color: colors.text, marginBottom: spacing.xs },
+  modalEmpty: { color: colors.textMuted, textAlign: 'center', paddingVertical: spacing.lg, fontFamily: fonts.body },
   modalList: { flexGrow: 0 },
   modalListContent: { gap: spacing.sm },
   deckOption: {
@@ -717,8 +720,8 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     padding: spacing.md,
   },
-  deckOptionName: { fontSize: 16, fontWeight: '600', color: colors.text },
-  deckOptionMeta: { fontSize: 13, color: colors.textMuted, marginTop: 2 },
+  deckOptionName: { fontSize: 18, fontFamily: fonts.heading, color: colors.text },
+  deckOptionMeta: { fontSize: 13, fontFamily: fonts.body, color: colors.textMuted, marginTop: 2 },
   levelMenuCard: {
     backgroundColor: colors.card,
     borderRadius: radius.lg,
@@ -738,8 +741,8 @@ const styles = StyleSheet.create({
     minWidth: 180,
   },
   menuItem: { paddingVertical: spacing.sm, paddingHorizontal: spacing.md },
-  menuItemText: { fontSize: 15, color: colors.text },
-  menuItemDanger: { color: colors.danger },
+  menuItemText: { fontSize: 15, fontFamily: fonts.body, color: colors.text },
+  menuItemDanger: { color: colors.danger, fontFamily: fonts.bodyBold },
   levelOption: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -750,7 +753,7 @@ const styles = StyleSheet.create({
   },
   levelOptionActive: { backgroundColor: colors.bg },
   levelDot: { width: 10, height: 10, borderRadius: 5 },
-  levelOptionLabel: { flex: 1, fontSize: 15, color: colors.text },
-  levelOptionLabelActive: { fontWeight: '700' },
-  levelOptionCount: { fontSize: 13, color: colors.textMuted, fontWeight: '600' },
+  levelOptionLabel: { flex: 1, fontSize: 15, fontFamily: fonts.body, color: colors.text },
+  levelOptionLabelActive: { fontFamily: fonts.bodyBold },
+  levelOptionCount: { fontSize: 13, color: colors.textMuted, fontFamily: fonts.bodyMedium },
 });
