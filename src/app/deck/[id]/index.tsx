@@ -203,6 +203,8 @@ export default function DeckDetailScreen() {
       <FlatList
         data={visibleCards}
         keyExtractor={(c) => String(c.id)}
+        numColumns={2}
+        columnWrapperStyle={styles.cardColumn}
         style={styles.list}
         contentContainerStyle={styles.listContent}
         keyboardShouldPersistTaps="handled"
@@ -221,7 +223,7 @@ export default function DeckDetailScreen() {
           const isSelected = selectedIds.has(item.id);
           return (
             <Pressable
-              style={({ pressed }) => [styles.cardRow, pressed && styles.pressed]}
+              style={({ pressed }) => [styles.cardCell, pressed && styles.pressed]}
               onPress={() =>
                 selecting
                   ? toggleSelected(item.id)
@@ -229,19 +231,21 @@ export default function DeckDetailScreen() {
               }
             >
               <View style={styles.flex1}>
-                <Text style={styles.cardFront} numberOfLines={1}>
+                <Text style={styles.cardFront} numberOfLines={2}>
                   {item.front}
                 </Text>
-                <Text style={styles.cardBack} numberOfLines={1}>
+                <Text style={styles.cardBack} numberOfLines={2}>
                   {item.back}
                 </Text>
               </View>
               {selecting ? (
-                <View style={[styles.checkbox, isSelected && styles.checkboxOn]}>
-                  {isSelected ? <Text style={styles.checkboxMark}>✓</Text> : null}
+                <View style={[styles.cardCellFooter, styles.cardCellFooterEnd]}>
+                  <View style={[styles.checkbox, isSelected && styles.checkboxOn]}>
+                    {isSelected ? <Text style={styles.checkboxMark}>✓</Text> : null}
+                  </View>
                 </View>
               ) : (
-                <View style={styles.levelInfo}>
+                <View style={styles.cardCellFooter}>
                   {isDue ? <View style={styles.dueDot} /> : null}
                   <View style={[styles.levelBadge, { backgroundColor: levelColor(item.familiarity) }]}>
                     <Text style={styles.levelText}>Lvl {item.familiarity}</Text>
@@ -615,11 +619,14 @@ const styles = StyleSheet.create({
   levelChipCaret: { fontSize: 11, color: colors.textMuted },
   list: { flex: 1 },
   listContent: { gap: spacing.sm, paddingBottom: spacing.sm },
+  cardColumn: { gap: spacing.sm },
   empty: { textAlign: 'center', color: colors.textMuted, marginTop: spacing.lg },
   emptyFilter: { gap: spacing.md, alignItems: 'center' },
-  cardRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  // Two-column grid tile. maxWidth caps a lone trailing card at half width so
+  // it lines up with the column above instead of stretching across the row.
+  cardCell: {
+    flex: 1,
+    maxWidth: '50%',
     backgroundColor: colors.card,
     borderWidth: 1,
     borderColor: colors.border,
@@ -629,7 +636,9 @@ const styles = StyleSheet.create({
   pressed: { opacity: 0.7 },
   cardFront: { fontSize: 16, fontWeight: '600', color: colors.text },
   cardBack: { fontSize: 14, color: colors.textMuted, marginTop: 2 },
-  levelInfo: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginLeft: spacing.md },
+  // Pinned to the bottom of the tile (text block above takes the flex space).
+  cardCellFooter: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginTop: spacing.sm },
+  cardCellFooterEnd: { justifyContent: 'flex-end' },
   dueDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.primary },
   levelBadge: { paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: radius.sm },
   levelText: { color: colors.primaryText, fontSize: 12, fontWeight: '700' },
