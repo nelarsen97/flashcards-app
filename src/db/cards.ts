@@ -183,6 +183,17 @@ export async function rateCard(
   );
 }
 
+/** Permanently delete a set of cards. No-op for an empty id list. */
+export async function deleteCards(cardIds: number[]): Promise<void> {
+  if (cardIds.length === 0) return;
+  const db = await getDb();
+  await db.withTransactionAsync(async () => {
+    for (const id of cardIds) {
+      await db.runAsync('DELETE FROM cards WHERE id = ?', id);
+    }
+  });
+}
+
 /** Re-assign a set of cards to another deck. Card learned/due state is preserved. */
 export async function moveCards(cardIds: number[], targetDeckId: number): Promise<void> {
   if (cardIds.length === 0) return;

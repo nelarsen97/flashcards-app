@@ -112,6 +112,23 @@ describe('cards data layer', () => {
     expect(await cards.getCard(id)).toBeNull();
   });
 
+  it('deleteCards removes every card in the id list, leaving others', async () => {
+    const id1 = await cards.addCard(deckId, 'a', '1');
+    const id2 = await cards.addCard(deckId, 'b', '2');
+    const id3 = await cards.addCard(deckId, 'c', '3');
+
+    await cards.deleteCards([id1, id3]);
+
+    expect((await cards.listCards(deckId)).map((c) => c.front)).toEqual(['b']);
+    expect(await cards.getCard(id2)).not.toBeNull();
+  });
+
+  it('deleteCards is a no-op for an empty id list', async () => {
+    await cards.addCard(deckId, 'a', '1');
+    await expect(cards.deleteCards([])).resolves.toBeUndefined();
+    expect(await cards.listCards(deckId)).toHaveLength(1);
+  });
+
   it('moveCards reassigns cards to another deck, preserving them', async () => {
     const other = await decks.createDeck('Other');
     const id1 = await cards.addCard(deckId, 'a', '1');

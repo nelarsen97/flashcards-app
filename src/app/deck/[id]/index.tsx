@@ -5,7 +5,15 @@ import { useCallback, useState } from 'react';
 import { Alert, FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { Button } from '@/components/Button';
-import { Card, importCards, LEVEL_GROUPS, LevelGroup, listCards, moveCards } from '@/db/cards';
+import {
+  Card,
+  deleteCards,
+  importCards,
+  LEVEL_GROUPS,
+  LevelGroup,
+  listCards,
+  moveCards,
+} from '@/db/cards';
 import { deleteDeck, DeckWithCounts, getDeck, listDecksWithCounts, renameDeck } from '@/db/decks';
 import { parseSemicolonCsv } from '@/lib/csv';
 import { applyCardFilters, CardStatus } from '@/lib/search';
@@ -149,6 +157,27 @@ export default function DeckDetailScreen() {
     } catch (e) {
       console.error(e);
     }
+  }
+
+  function confirmDeleteSelected() {
+    const count = selectedIds.size;
+    if (count === 0) return;
+    Alert.alert(
+      'Delete cards',
+      `Are you sure? You are about to delete ${count} ${count === 1 ? 'card' : 'cards'}.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            await deleteCards([...selectedIds]);
+            cancelSelecting();
+            load();
+          },
+        },
+      ]
+    );
   }
 
   async function handleMoveTo(target: DeckWithCounts) {
@@ -331,7 +360,13 @@ export default function DeckDetailScreen() {
             {selectedIds.size} {selectedIds.size === 1 ? 'card' : 'cards'} selected
           </Text>
           <View style={styles.actionRow}>
-            <Button title="Cancel" variant="secondary" style={styles.flex1} onPress={cancelSelecting} />
+            <Button
+              title={`Delete${selectedIds.size > 0 ? ` (${selectedIds.size})` : ''}`}
+              variant="danger"
+              style={styles.flex1}
+              onPress={confirmDeleteSelected}
+              disabled={selectedIds.size === 0}
+            />
             <Button
               title={`Move${selectedIds.size > 0 ? ` (${selectedIds.size})` : ''}`}
               style={styles.flex1}
@@ -339,6 +374,7 @@ export default function DeckDetailScreen() {
               disabled={selectedIds.size === 0}
             />
           </View>
+          <Button title="Cancel" variant="secondary" onPress={cancelSelecting} />
         </View>
       ) : (
         <View style={styles.actions}>
