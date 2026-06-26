@@ -52,6 +52,18 @@ jobs:
           java-version: 17
           cache: gradle
 
+      # Give every CI build a unique, increasing versionCode (the workflow run
+      # number) so a new APK installs as an in-place update over the previous CI
+      # build instead of being rejected with "package version matches installed
+      # package version". app.json pins no android.versionCode, so prebuild would
+      # otherwise emit versionCode 1 every time. Done AFTER the JDK setup on
+      # purpose: editing build.gradle earlier would change the file the Gradle
+      # cache key is hashed from and bust the cache on every run.
+      - name: Set versionCode to the run number
+        run: |
+          sed -i -E "s/versionCode [0-9]+/versionCode ${{ github.run_number }}/" android/app/build.gradle
+          grep -nE "versionCode ${{ github.run_number }}([^0-9]|$)" android/app/build.gradle
+
       # Release build: shrunk + stripped + self-contained (embeds the JS bundle),
       # so it actually runs standalone. Signed with the template's debug keystore.
       #
