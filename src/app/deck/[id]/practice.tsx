@@ -1,8 +1,9 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Modal, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ReactNode, useCallback, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Modal, Platform, Pressable, StyleProp, StyleSheet, Text, TextInput, View, ViewStyle } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
+  DerivedValue,
   runOnJS,
   useAnimatedStyle,
   useDerivedValue,
@@ -351,9 +352,11 @@ function PracticeCard({
     setFlip((f) => f + 1);
   }, []);
   // Each face's speaker and pencil buttons live inside the card, under the flip's
-  // detector. Wrap each in a native gesture and make the flip wait for them to
-  // fail, so a tap on a button runs its press (pronounce / edit) instead of
-  // flipping; taps elsewhere on the card still flip.
+  // detector. Each gets a native gesture the flip yields to (wired up by
+  // CardCorner), so tapping a button runs its press (pronounce / edit) instead of
+  // flipping, while taps elsewhere on the card still flip. A GestureDetector can't
+  // share a gesture instance, so it's one per button per face — all four are
+  // registered with the flip below.
   const speakerFront = Gesture.Native();
   const speakerBack = Gesture.Native();
   const pencilFront = Gesture.Native();
@@ -362,56 +365,104 @@ function PracticeCard({
     .onEnd(() => runOnJS(toggle)())
     .requireExternalGestureToFail(speakerFront, speakerBack, pencilFront, pencilBack);
 
-  const frontStyle = useAnimatedStyle(() => ({
-    transform: [{ perspective: 1000 }, { rotateY: `${progress.value * 180}deg` }],
-  }));
-  const backStyle = useAnimatedStyle(() => ({
-    transform: [{ perspective: 1000 }, { rotateY: `${progress.value * 180 + 180}deg` }],
-  }));
-
   return (
     <GestureDetector gesture={tap}>
       <View style={[styles.cardSlot, { width }]}>
-        <Animated.View style={[styles.face, frontStyle]} pointerEvents={showBack ? 'none' : 'auto'}>
-          <GestureDetector gesture={pencilFront}>
-            <View style={styles.pencil}>
-              <EditButton card={card} onEdit={onEdit} />
-            </View>
-          </GestureDetector>
-          <GestureDetector gesture={speakerFront}>
-            <View style={styles.speaker}>
-              <SpeakerButton text={card.front} language="nb-NO" />
-            </View>
-          </GestureDetector>
-          <Text style={styles.faceText}>{card.front}</Text>
-          <Text style={styles.tapHint}>Tap to flip · swipe to navigate</Text>
-        </Animated.View>
-        <Animated.View
-          style={[styles.face, styles.faceBack, backStyle]}
-          pointerEvents={showBack ? 'auto' : 'none'}
-        >
-          <GestureDetector gesture={pencilBack}>
-            <View style={styles.pencil}>
-              <EditButton card={card} onEdit={onEdit} />
-            </View>
-          </GestureDetector>
-          <GestureDetector gesture={speakerBack}>
-            <View style={styles.speaker}>
-              <SpeakerButton text={card.back} language="en-US" />
-            </View>
-          </GestureDetector>
-          <Text style={styles.faceText}>{card.back}</Text>
-          <Text style={styles.tapHint}>Tap to flip · swipe to navigate</Text>
-        </Animated.View>
+        <CardFace
+          card={card}
+          onEdit={onEdit}
+          text={card.front}
+          language="nb-NO"
+          progress={progress}
+          active={!showBack}
+          pencilGesture={pencilFront}
+          speakerGesture={speakerFront}
+        />
+        <CardFace
+          card={card}
+          onEdit={onEdit}
+          text={card.back}
+          language="en-US"
+          progress={progress}
+          active={showBack}
+          back
+          pencilGesture={pencilBack}
+          speakerGesture={speakerBack}
+        />
       </View>
     </GestureDetector>
   );
 }
 
-// Pencil button at the bottom-left of a card face (mirror of the speaker button
-// at the bottom-right). Like the speaker, its caller wraps it in a Gesture.Native
-// the flip waits on, so a direct tap edits the card instead of flipping it; the
-// surrounding View owns the corner positioning.
+// One side of a practice card. The two faces are stacked and back-face-hidden;
+// `back` adds the 180° rotation and the back background, and `active` makes this
+// the side that receives touches (the hidden one is pointerEvents="none").
+function CardFace({
+  card,
+  onEdit,
+  text,
+  language,
+  progress,
+  active,
+  back,
+  pencilGesture,
+  speakerGesture,
+}: {
+  card: Card;
+  onEdit: (card: Card) => void;
+  text: string;
+  language: string;
+  progress: DerivedValue<number>;
+  active: boolean;
+  back?: boolean;
+  pencilGesture: ReturnType<typeof Gesture.Native>;
+  speakerGesture: ReturnType<typeof Gesture.Native>;
+}) {
+  const faceStyle = useAnimatedStyle(() => ({
+    transform: [
+      { perspective: 1000 },
+      { rotateY: `${progress.value * 180 + (back ? 180 : 0)}deg` },
+    ],
+  }));
+  return (
+    <Animated.View
+      style={[styles.face, back && styles.faceBack, faceStyle]}
+      pointerEvents={active ? 'auto' : 'none'}
+    >
+      <CardCorner gesture={pencilGesture} style={styles.pencil}>
+        <EditButton card={card} onEdit={onEdit} />
+      </CardCorner>
+      <CardCorner gesture={speakerGesture} style={styles.speaker}>
+        <SpeakerButton text={text} language={language} />
+      </CardCorner>
+      <Text style={styles.faceText}>{text}</Text>
+      <Text style={styles.tapHint}>Tap to flip · swipe to navigate</Text>
+    </Animated.View>
+  );
+}
+
+// A control pinned to a corner of a card face that must not trigger the flip. The
+// caller owns the Gesture.Native() (so the flip can requireExternalGestureToFail
+// on it) and the corner positioning; this just wires that gesture to the wrapper.
+function CardCorner({
+  gesture,
+  style,
+  children,
+}: {
+  gesture: ReturnType<typeof Gesture.Native>;
+  style: StyleProp<ViewStyle>;
+  children: ReactNode;
+}) {
+  return (
+    <GestureDetector gesture={gesture}>
+      <View style={style}>{children}</View>
+    </GestureDetector>
+  );
+}
+
+// Pencil button shown at the bottom-left of a card face (mirror of the speaker
+// button at the bottom-right). Rendered inside a CardCorner, which owns the
+// no-flip gesture and the corner positioning, so a direct tap edits the card.
 function EditButton({ card, onEdit }: { card: Card; onEdit: (card: Card) => void }) {
   return (
     <Pressable
