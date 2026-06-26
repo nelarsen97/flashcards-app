@@ -57,6 +57,23 @@ describe('DecksScreen', () => {
     expect(getByText('3')).toBeTruthy(); // due badge
   });
 
+  it('jumps straight to practice from a deck row that has due cards', async () => {
+    mockedList.mockResolvedValue([
+      { id: 1, name: 'Spanish', created_at: 0, total: 10, due: 3 },
+      { id: 2, name: 'French', created_at: 0, total: 1, due: 0 },
+    ]);
+
+    const { findByLabelText, queryByLabelText, getByText } = await render(<DecksScreen />);
+
+    await fireEvent.press(await findByLabelText('Practice Spanish'));
+    expect(mockPush).toHaveBeenCalledWith('/deck/1/practice');
+
+    // No Practice button on a deck with nothing due; the row still opens the deck.
+    expect(queryByLabelText('Practice French')).toBeNull();
+    await fireEvent.press(getByText('French'));
+    expect(mockPush).toHaveBeenCalledWith('/deck/2');
+  });
+
   it('shows the empty state when there are no decks', async () => {
     mockedList.mockResolvedValue([]);
     const { findByText } = await render(<DecksScreen />);

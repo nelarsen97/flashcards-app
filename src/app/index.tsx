@@ -1,6 +1,6 @@
 import * as DocumentPicker from 'expo-document-picker';
 import { File } from 'expo-file-system';
-import { Link, useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import {
   Alert,
@@ -144,22 +144,33 @@ export default function DecksScreen() {
           </View>
         }
         renderItem={({ item }) => (
-          <Link href={`/deck/${item.id}`} asChild>
-            <Pressable style={({ pressed }) => [styles.deckRow, pressed && styles.pressed]}>
-              <View style={styles.deckTextWrap}>
-                <Text style={styles.deckName} numberOfLines={1}>
-                  {item.name}
-                </Text>
-                <Text style={styles.deckMeta}>
-                  {item.total} {item.total === 1 ? 'card' : 'cards'}
-                </Text>
-              </View>
-              <View style={styles.dueBadge}>
-                <Text style={styles.dueNumber}>{item.due}</Text>
-                <Text style={styles.dueLabel}>due</Text>
-              </View>
-            </Pressable>
-          </Link>
+          <Pressable
+            style={({ pressed }) => [styles.deckRow, pressed && styles.pressed]}
+            onPress={() => router.push(`/deck/${item.id}`)}
+          >
+            <View style={styles.deckTextWrap}>
+              <Text style={styles.deckName} numberOfLines={1}>
+                {item.name}
+              </Text>
+              <Text style={styles.deckMeta}>
+                {item.total} {item.total === 1 ? 'card' : 'cards'}
+              </Text>
+            </View>
+            <View style={styles.dueBadge}>
+              <Text style={styles.dueNumber}>{item.due}</Text>
+              <Text style={styles.dueLabel}>due</Text>
+            </View>
+            {item.due > 0 ? (
+              <Pressable
+                style={({ pressed }) => [styles.practiceButton, pressed && styles.pressed]}
+                onPress={() => router.push(`/deck/${item.id}/practice`)}
+                accessibilityRole="button"
+                accessibilityLabel={`Practice ${item.name}`}
+              >
+                <Text style={styles.practiceButtonText}>Practice</Text>
+              </Pressable>
+            ) : null}
+          </Pressable>
         )}
       />
     </Screen>
@@ -243,6 +254,18 @@ const styles = StyleSheet.create({
   },
   dueBadge: {
     minWidth: 52,
+  },
+  practiceButton: {
+    marginLeft: spacing.sm,
+    backgroundColor: colors.primary,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  practiceButtonText: {
+    color: colors.primaryText,
+    fontSize: 14,
+    fontWeight: '700',
   },
   dueNumber: {
     fontSize: 20,
