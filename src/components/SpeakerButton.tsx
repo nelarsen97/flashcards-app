@@ -67,9 +67,12 @@ export function SpeakerButton({ text, language, style }: Props) {
 
 const styles = StyleSheet.create({
   button: {
-    width: 56,
-    height: 56,
-    borderRadius: radius.md,
+    width: 52,
+    height: 52,
+    borderRadius: radius.pill,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -77,6 +80,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bg,
   },
   icon: {
-    fontSize: 30,
+    fontSize: 26,
   },
 });

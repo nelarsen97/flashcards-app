@@ -1,6 +1,6 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { ReactNode, useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Modal, Platform, Pressable, StyleProp, StyleSheet, Text, TextInput, View, ViewStyle } from 'react-native';
+import { ActivityIndicator, Modal, Platform, Pressable, StyleProp, StyleSheet, Text, TextInput, useWindowDimensions, View, ViewStyle } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   DerivedValue,
@@ -13,7 +13,7 @@ import { Button } from '@/components/Button';
 import { Screen } from '@/components/Screen';
 import { SpeakerButton } from '@/components/SpeakerButton';
 import { Card, editCard, getDueCards, rateCard, Rating } from '@/db/cards';
-import { colors, radius, spacing } from '@/theme';
+import { colors, fonts, radius, shadow, spacing } from '@/theme';
 
 const BATCH_SIZE = 10;
 // Horizontal travel (px) past which a pan is treated as a navigation swipe.
@@ -196,7 +196,7 @@ export default function PracticeScreen() {
     return (
       <View style={styles.centered}>
         <Stack.Screen options={{ title: 'Practice' }} />
-        <ActivityIndicator color={colors.primary} />
+        <ActivityIndicator color={colors.ferrule} />
       </View>
     );
   }
@@ -219,7 +219,7 @@ export default function PracticeScreen() {
           ) : (
             <View style={styles.summaryRow}>
               <SummaryStat label="Hard" value={tally.hard} color={colors.hard} />
-              <SummaryStat label="Fine" value={tally.fine} color={colors.fine} />
+              <SummaryStat label="Fine" value={tally.fine} color={colors.mid} />
               <SummaryStat label="Easy" value={tally.easy} color={colors.easy} />
             </View>
           )}
@@ -270,7 +270,7 @@ export default function PracticeScreen() {
 
       <View style={styles.ratingRow}>
         <Button title="Hard" color={colors.hard} style={styles.ratingBtn} onPress={() => handleRate('hard')} />
-        <Button title="Fine" color={colors.fine} style={styles.ratingBtn} onPress={() => handleRate('fine')} />
+        <Button title="Fine" color={colors.mid} style={styles.ratingBtn} onPress={() => handleRate('fine')} />
         <Button title="Easy" color={colors.easy} style={styles.ratingBtn} onPress={() => handleRate('easy')} />
       </View>
 
@@ -429,6 +429,7 @@ function CardFace({
       style={[styles.face, back && styles.faceBack, faceStyle]}
       pointerEvents={active ? 'auto' : 'none'}
     >
+      <CardRules />
       <CardCorner gesture={pencilGesture} style={styles.pencil}>
         <EditButton card={card} onEdit={onEdit} />
       </CardCorner>
@@ -437,6 +438,23 @@ function CardFace({
       </CardCorner>
       <Text style={styles.faceText}>{text}</Text>
     </Animated.View>
+  );
+}
+
+// The ruled-paper lines + red margin rule drawn inside a card face, so each
+// flashcard reads like a lined index card. Over-draws past the face height and
+// is clipped by the face's overflow:hidden; sits behind the text and buttons and
+// never intercepts touches.
+function CardRules() {
+  const { height } = useWindowDimensions();
+  const count = Math.ceil(height / 30);
+  return (
+    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+      {Array.from({ length: count }, (_, i) => (
+        <View key={i} style={[styles.cardLine, { top: (i + 1) * 30 }]} />
+      ))}
+      <View style={styles.cardMargin} />
+    </View>
   );
 }
 
@@ -491,8 +509,8 @@ const styles = StyleSheet.create({
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   progress: {
     textAlign: 'center',
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: 16,
+    fontFamily: fonts.bodyBold,
     color: colors.textMuted,
     marginBottom: spacing.md,
   },
@@ -518,6 +536,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     backfaceVisibility: 'hidden',
+    overflow: 'hidden',
     backgroundColor: colors.card,
     borderWidth: 1,
     borderColor: colors.border,
@@ -525,22 +544,42 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     alignItems: 'center',
     justifyContent: 'center',
+    ...shadow.card,
   },
   faceBack: {
-    backgroundColor: colors.bg,
+    backgroundColor: '#FBF1F2', // faint eraser-pink tint to distinguish the answer side
+  },
+  // Faint ruled lines + red margin painted across a card face (index-card look).
+  cardLine: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: colors.paperLine,
+  },
+  cardMargin: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: spacing.xl,
+    width: 1.5,
+    backgroundColor: colors.marginLine,
   },
   speaker: { position: 'absolute', bottom: spacing.md, right: spacing.md },
   pencil: { position: 'absolute', bottom: spacing.md, left: spacing.md },
   pencilButton: {
-    width: 56,
-    height: 56,
-    borderRadius: radius.md,
+    width: 52,
+    height: 52,
+    borderRadius: radius.pill,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
   pencilPressed: { backgroundColor: colors.bg },
-  pencilIcon: { fontSize: 26 },
-  faceText: { fontSize: 24, fontWeight: '600', color: colors.text, textAlign: 'center' },
+  pencilIcon: { fontSize: 24 },
+  faceText: { fontSize: 30, fontFamily: fonts.heading, color: colors.text, textAlign: 'center' },
   ratingRow: { flexDirection: 'row', gap: spacing.xs },
   ratingBtn: { flex: 1, paddingHorizontal: spacing.xs },
   summaryCard: {
@@ -550,13 +589,14 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     padding: spacing.lg,
     marginTop: spacing.lg,
+    ...shadow.card,
   },
-  summaryTitle: { fontSize: 20, fontWeight: '700', color: colors.text, textAlign: 'center' },
-  summarySub: { fontSize: 15, color: colors.textMuted, textAlign: 'center', marginTop: spacing.sm },
+  summaryTitle: { fontSize: 26, fontFamily: fonts.heading, color: colors.text, textAlign: 'center' },
+  summarySub: { fontSize: 15, fontFamily: fonts.body, color: colors.textMuted, textAlign: 'center', marginTop: spacing.sm },
   summaryRow: { flexDirection: 'row', marginTop: spacing.lg },
   summaryStat: { flex: 1 },
-  summaryValue: { fontSize: 28, fontWeight: '700', textAlign: 'center' },
-  summaryLabel: { fontSize: 14, color: colors.textMuted, marginTop: 2, textAlign: 'center' },
+  summaryValue: { fontSize: 30, fontFamily: fonts.bodyExtra, textAlign: 'center' },
+  summaryLabel: { fontSize: 14, fontFamily: fonts.body, color: colors.textMuted, marginTop: 2, textAlign: 'center' },
   summaryActions: { gap: spacing.sm, marginTop: spacing.lg },
   flex1: { flex: 1 },
   modalBackdrop: {
@@ -570,9 +610,10 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     padding: spacing.md,
     gap: spacing.sm,
+    ...shadow.card,
   },
-  modalTitle: { fontSize: 18, fontWeight: '700', color: colors.text, marginBottom: spacing.xs },
-  fieldLabel: { fontSize: 14, fontWeight: '700', color: colors.textMuted },
+  modalTitle: { fontSize: 22, fontFamily: fonts.heading, color: colors.text, marginBottom: spacing.xs },
+  fieldLabel: { fontSize: 16, fontFamily: fonts.heading, color: colors.text },
   modalInput: {
     backgroundColor: colors.bg,
     borderWidth: 1,
@@ -580,6 +621,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     padding: spacing.md,
     fontSize: 16,
+    fontFamily: fonts.body,
     color: colors.text,
     minHeight: 80,
     textAlignVertical: 'top',

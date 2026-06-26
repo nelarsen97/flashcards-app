@@ -5,7 +5,7 @@ import { Alert, ScrollView, StyleSheet, Text, TextInput, View } from 'react-nati
 import { Button } from '@/components/Button';
 import { Screen } from '@/components/Screen';
 import { addCard, deleteCard, editCard, getCard } from '@/db/cards';
-import { colors, radius, spacing } from '@/theme';
+import { colors, fonts, radius, spacing } from '@/theme';
 
 export default function CardScreen() {
   const { id, cardId } = useLocalSearchParams<{ id: string; cardId?: string }>();
@@ -128,7 +128,7 @@ const styles = StyleSheet.create({
   // its end clears the nav bar via the Screen's safe-area inset.
   scroll: { flex: 1 },
   container: { padding: spacing.md, gap: spacing.sm },
-  label: { fontSize: 14, fontWeight: '700', color: colors.textMuted, marginTop: spacing.sm },
+  label: { fontSize: 18, fontFamily: fonts.heading, color: colors.text, marginTop: spacing.sm },
   input: {
     backgroundColor: colors.card,
     borderWidth: 1,
@@ -136,6 +136,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     padding: spacing.md,
     fontSize: 16,
+    fontFamily: fonts.body,
     color: colors.text,
     minHeight: 80,
     textAlignVertical: 'top',

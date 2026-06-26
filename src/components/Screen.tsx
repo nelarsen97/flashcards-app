@@ -1,6 +1,11 @@
 import { ReactNode } from 'react';
-import { StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
+import { StyleProp, StyleSheet, useWindowDimensions, View, ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { colors, spacing } from '@/theme';
+
+// Distance between ruled lines on the notebook page.
+const LINE_GAP = 30;
 
 interface ScreenProps {
   children: ReactNode;
@@ -10,6 +15,8 @@ interface ScreenProps {
   /** Extra padding below the safe-area inset, e.g. breathing room above the
    *  nav bar. The bottom padding is always at least the inset. */
   bottomOffset?: number;
+  /** Draw the ruled-paper background (lines + red margin rule). Default true. */
+  paper?: boolean;
 }
 
 /**
@@ -19,19 +26,58 @@ interface ScreenProps {
  * — the safe-area bottom inset is applied here, once, instead of being remembered
  * per screen.
  *
+ * It also paints the school-notebook backdrop: faint blue ruled lines with a red
+ * margin rule, behind the content. The backdrop is `pointerEvents="none"` so it
+ * never intercepts taps; opaque cards/inputs layered on top read as index cards
+ * sitting on the page. Lists/wrappers should stay transparent so the ruling
+ * shows through.
+ *
  * The inset is layered after `style` so a screen's own container styles can't
  * accidentally cancel it. The top is intentionally left to the navigation
  * header, which already clears the status bar.
  */
-export function Screen({ children, style, bottomOffset = 0 }: ScreenProps) {
+export function Screen({ children, style, bottomOffset = 0, paper = true }: ScreenProps) {
   const insets = useSafeAreaInsets();
   return (
-    <View style={[styles.flex, style, { paddingBottom: insets.bottom + bottomOffset }]}>
-      {children}
+    <View style={styles.root}>
+      {paper ? <RuledPaper /> : null}
+      <View style={[styles.flex, style, { paddingBottom: insets.bottom + bottomOffset }]}>
+        {children}
+      </View>
+    </View>
+  );
+}
+
+/** The ruled-paper backdrop: evenly spaced blue lines plus a red margin rule. */
+function RuledPaper() {
+  const { height } = useWindowDimensions();
+  const lineCount = Math.ceil(height / LINE_GAP);
+  return (
+    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+      {Array.from({ length: lineCount }, (_, i) => (
+        <View key={i} style={[styles.line, { top: (i + 1) * LINE_GAP }]} />
+      ))}
+      <View style={styles.margin} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: colors.bg },
   flex: { flex: 1 },
+  line: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: colors.paperLine,
+  },
+  margin: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: spacing.xl,
+    width: 1.5,
+    backgroundColor: colors.marginLine,
+  },
 });
