@@ -1,0 +1,57 @@
+name: EAS Build (Android)
+
+# Builds an installable Android APK on Expo's EAS servers (GitHub runners are
+# not behind the dev environment's egress firewall, so the build that can't run
+# in-session runs fine here).
+#
+# Setup (one time): add a repository secret named EXPO_TOKEN with a personal
+# access token from https://expo.dev/accounts/[account]/settings/access-tokens
+#
+# Run it: Actions tab -> "EAS Build (Android)" -> "Run workflow". When it
+# finishes, download the .apk from the build's page on https://expo.dev (the
+# job log prints the build URL).
+
+on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: EAS build profile (see eas.json)
+        type: choice
+        default: preview
+        options:
+          - preview
+          - development
+          - production
+
+jobs:
+  build:
+    name: Android (${{ inputs.profile }})
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Set up EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Verify EXPO_TOKEN is set
+        run: |
+          if [ -z "${{ secrets.EXPO_TOKEN }}" ]; then
+            echo "::error::EXPO_TOKEN secret is not set. Add it under Settings -> Secrets and variables -> Actions."
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Android APK on EAS
+        run: eas build --platform android --profile ${{ inputs.profile }} --non-interactive
