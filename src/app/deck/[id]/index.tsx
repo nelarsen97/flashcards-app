@@ -141,8 +141,8 @@ export default function DeckDetailScreen() {
     }
   }
 
-  function startSelecting() {
-    setSelectedIds(new Set());
+  function startSelecting(initialId?: number) {
+    setSelectedIds(new Set(initialId != null ? [initialId] : []));
     setSelecting(true);
   }
 
@@ -205,7 +205,7 @@ export default function DeckDetailScreen() {
   }
 
   return (
-    <Screen style={styles.container}>
+    <Screen style={styles.container} bottomOffset={spacing.md}>
       <Stack.Screen
         options={{
           title: selecting ? 'Select cards' : name || 'Deck',
@@ -270,6 +270,9 @@ export default function DeckDetailScreen() {
                   ? toggleSelected(item.id)
                   : router.push(`/deck/${deckId}/card?cardId=${item.id}`)
               }
+              onLongPress={() => {
+                if (!selecting) startSelecting(item.id);
+              }}
             >
               <View style={styles.flex1}>
                 <Text style={styles.cardFront} numberOfLines={2}>
@@ -390,24 +393,18 @@ export default function DeckDetailScreen() {
         </View>
       ) : (
         <View style={styles.actions}>
-          <Button
-            title={due > 0 ? `Practice (${due} due)` : 'Nothing due'}
-            onPress={() => router.push(`/deck/${deckId}/practice`)}
-            disabled={due === 0}
-          />
           <View style={styles.actionRow}>
+            <Button
+              title={due > 0 ? 'Practice' : 'Nothing due'}
+              style={styles.flex1}
+              onPress={() => router.push(`/deck/${deckId}/practice`)}
+              disabled={due === 0}
+            />
             <Button
               title="Add card"
               variant="secondary"
               style={styles.flex1}
               onPress={() => router.push(`/deck/${deckId}/card`)}
-            />
-            <Button
-              title="Select cards"
-              variant="secondary"
-              style={styles.flex1}
-              onPress={startSelecting}
-              disabled={cards.length === 0}
             />
           </View>
         </View>
