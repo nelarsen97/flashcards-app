@@ -101,22 +101,25 @@ export async function getCard(id: number): Promise<Card | null> {
 
 /**
  * Case-insensitive lookup of an existing card by its (trimmed) front text,
- * across all decks. Returns the matching deck's name, or null if none. Used by
- * the add-card screen to warn about duplicates without blocking saving.
+ * across all decks. Returns the earliest-created match's deck name, or null.
+ * Used by the add-card screen to warn about duplicates without blocking saving.
+ *
+ * Case-folding is done in JS, not SQL: SQLite's built-in LOWER() only folds
+ * ASCII A–Z (expo-sqlite has no ICU extension), so a SQL `LOWER(...) = LOWER(?)`
+ * would miss case differences in non-ASCII letters — e.g. Norwegian Ø/ø, Å/å,
+ * Æ/æ. JS `toLowerCase()` is Unicode-aware, so we compare fronts here instead.
  */
 export async function findDuplicateFront(front: string): Promise<{ deckName: string } | null> {
-  const trimmed = front.trim();
-  if (trimmed === '') return null;
+  const needle = front.trim().toLowerCase();
+  if (needle === '') return null;
   const db = await getDb();
-  const row = await db.getFirstAsync<{ deckName: string }>(
-    `SELECT d.name AS deckName
+  const rows = await db.getAllAsync<{ front: string; deckName: string }>(
+    `SELECT c.front AS front, d.name AS deckName
        FROM cards c JOIN decks d ON d.id = c.deck_id
-      WHERE LOWER(c.front) = LOWER(?)
-      ORDER BY c.created_at ASC
-      LIMIT 1`,
-    trimmed
+      ORDER BY c.created_at ASC`
   );
-  return row ?? null;
+  const match = rows.find((r) => r.front.trim().toLowerCase() === needle);
+  return match ? { deckName: match.deckName } : null;
 }
 
 export async function addCard(deckId: number, front: string, back: string): Promise<number> {

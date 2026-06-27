@@ -172,6 +172,18 @@ describe('cards data layer', () => {
       expect(await cards.findDuplicateFront('house')).toEqual({ deckName: 'Test deck' });
     });
 
+    it('folds non-ASCII (Norwegian) letters case-insensitively', async () => {
+      // SQLite's LOWER() only folds ASCII, so these need JS-side case folding.
+      await cards.addCard(deckId, 'Øl', 'beer');
+      await cards.addCard(deckId, 'Hånd', 'hand');
+      await cards.addCard(deckId, 'Færre', 'fewer');
+      expect(await cards.findDuplicateFront('øl')).toEqual({ deckName: 'Test deck' });
+      expect(await cards.findDuplicateFront('hånd')).toEqual({ deckName: 'Test deck' });
+      expect(await cards.findDuplicateFront('færre')).toEqual({ deckName: 'Test deck' });
+      // And the reverse direction (lowercase stored, uppercase typed).
+      expect(await cards.findDuplicateFront('ØL')).toEqual({ deckName: 'Test deck' });
+    });
+
     it('trims the search term before matching', async () => {
       await cards.addCard(deckId, 'house', 'hus');
       expect(await cards.findDuplicateFront('  house  ')).toEqual({ deckName: 'Test deck' });
