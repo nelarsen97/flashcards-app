@@ -364,6 +364,7 @@ export default function DeckDetailScreen() {
         <Stat
           label="Learned"
           value={learned}
+          muted
           active={status === 'learned'}
           disabled={cards.length === 0}
           onPress={() => toggleStatus('learned')}
@@ -564,6 +565,7 @@ function Stat({
   label,
   value,
   highlight,
+  muted,
   active,
   disabled,
   onPress,
@@ -571,6 +573,7 @@ function Stat({
   label: string;
   value: number;
   highlight?: boolean;
+  muted?: boolean;
   active?: boolean;
   disabled?: boolean;
   onPress?: () => void;
@@ -584,7 +587,15 @@ function Stat({
       accessibilityState={{ selected: active, disabled }}
       accessibilityLabel={`Filter by ${label}`}
     >
-      <Text style={[styles.statValue, highlight && { color: colors.ferrule }]}>{value}</Text>
+      <Text
+        style={[
+          styles.statValue,
+          highlight && { color: colors.ferrule },
+          muted && { color: colors.textMuted },
+        ]}
+      >
+        {value}
+      </Text>
       <Text style={[styles.statLabel, active && styles.statLabelActive]}>{label}</Text>
     </Pressable>
   );
