@@ -517,7 +517,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 16,
     fontFamily: fonts.bodyBold,
-    color: colors.text,
+    color: colors.chalk,
     marginBottom: spacing.md,
   },
   // Clips the off-screen cards so only the current one shows through.

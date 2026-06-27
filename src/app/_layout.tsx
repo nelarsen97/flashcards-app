@@ -29,14 +29,14 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <StatusBar style="dark" />
+      <StatusBar style="light" />
       <Stack
         screenOptions={{
-          headerStyle: { backgroundColor: colors.desk },
+          headerStyle: { backgroundColor: colors.chalkboard },
           headerShadowVisible: false,
-          headerTintColor: colors.text,
-          headerTitleStyle: { fontFamily: fonts.heading, fontSize: 22, color: colors.text },
-          contentStyle: { backgroundColor: colors.desk },
+          headerTintColor: colors.chalk,
+          headerTitleStyle: { fontFamily: fonts.heading, fontSize: 22, color: colors.chalk },
+          contentStyle: { backgroundColor: colors.chalkboard },
         }}
       >
         <Stack.Screen name="index" options={{ title: 'Decks' }} />
