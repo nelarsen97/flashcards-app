@@ -3,6 +3,7 @@ import { File } from 'expo-file-system';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Alert, FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
 import { Screen } from '@/components/Screen';
@@ -20,10 +21,20 @@ import { parseSemicolonCsv } from '@/lib/csv';
 import { applyCardFilters, CardStatus } from '@/lib/search';
 import { colors, fonts, levelColor, radius, shadow, spacing } from '@/theme';
 
+// Default height of the Android navigation header's toolbar (excludes the
+// status-bar inset, which is added on top). Used to anchor the overflow menu
+// just below the header.
+const HEADER_TOOLBAR_HEIGHT = 56;
+
 export default function DeckDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const deckId = Number(id);
   const router = useRouter();
+  // Drop the overflow (⋯) menu just below the header so it opens downward from
+  // the button instead of overlapping the status bar. The header height is the
+  // status-bar inset plus the default Android toolbar height.
+  const insets = useSafeAreaInsets();
+  const headerHeight = insets.top + HEADER_TOOLBAR_HEIGHT;
 
   const [name, setName] = useState('');
   const [cards, setCards] = useState<Card[]>([]);
@@ -408,7 +419,10 @@ export default function DeckDetailScreen() {
         animationType="fade"
         onRequestClose={() => setMenuVisible(false)}
       >
-        <Pressable style={styles.menuBackdrop} onPress={() => setMenuVisible(false)}>
+        <Pressable
+          style={[styles.menuBackdrop, { paddingTop: headerHeight + spacing.xs }]}
+          onPress={() => setMenuVisible(false)}
+        >
           <View style={styles.menuCard}>
             <Pressable
               style={({ pressed }) => [styles.menuItem, pressed && styles.pressed]}
@@ -730,8 +744,10 @@ const styles = StyleSheet.create({
     minWidth: 220,
     alignSelf: 'center',
   },
-  // Overflow (⋯) menu anchored under the header's top-right corner.
-  menuBackdrop: { flex: 1, alignItems: 'flex-end', paddingTop: spacing.xs, paddingRight: spacing.sm },
+  // Overflow (⋯) menu anchored under the header's top-right corner. The top
+  // padding (header height) is applied inline so the menu opens downward from
+  // the button rather than overlapping the header/status bar.
+  menuBackdrop: { flex: 1, alignItems: 'flex-end', paddingRight: spacing.sm },
   menuCard: {
     backgroundColor: colors.card,
     borderRadius: radius.md,
