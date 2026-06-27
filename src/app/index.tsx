@@ -1,5 +1,6 @@
 import * as DocumentPicker from 'expo-document-picker';
 import { File } from 'expo-file-system';
+import { Image } from 'expo-image';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import {
@@ -20,6 +21,10 @@ import { Screen } from '@/components/Screen';
 import { createDeck, DeckWithCounts, listDecksWithCounts, reorderDecks } from '@/db/decks';
 import { exportAllToFile, importFromText, shareBackup } from '@/lib/backup';
 import { colors, deckCoverColor, fonts, radius, shadow, spacing } from '@/theme';
+
+// The composition-notebook marble: white speckles on transparent, painted over
+// each deck's color so the cover reads as a marbled notebook in that color.
+const NOTEBOOK_SPECKLE = require('../../assets/images/notebook-speckle.png');
 
 // Default height of the Android navigation header's toolbar (excludes the
 // status-bar inset, which is added on top). Used to anchor the overflow menu
@@ -218,7 +223,12 @@ export default function DecksScreen() {
         ]}
         onPress={() => router.push(`/deck/${item.id}`)}
       >
-        <Marble />
+        <Image
+          source={NOTEBOOK_SPECKLE}
+          style={StyleSheet.absoluteFill}
+          contentFit="cover"
+          pointerEvents="none"
+        />
         <View style={styles.spine} />
         <View style={styles.label}>
           <View style={styles.labelLine}>
@@ -251,58 +261,6 @@ export default function DecksScreen() {
       </Pressable>
     );
   }
-}
-
-// Small deterministic PRNG so a deck's speckle pattern is stable across renders.
-function mulberry32(seed: number) {
-  let a = seed >>> 0;
-  return () => {
-    a |= 0;
-    a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-// One fixed marble pattern, generated once and shared by every cover — just
-// like real composition books, which all carry the same marbling in different
-// colors. The cover tints it by showing its base color through the gaps. Dense
-// light + dark flecks read as marble; sits behind the spine/label and takes no
-// touches.
-const MARBLE = (() => {
-  const rng = mulberry32(0x5bd1e995);
-  return Array.from({ length: 130 }, () => {
-    const size = 1 + rng() * 3;
-    return {
-      top: `${rng() * 100}%` as const,
-      left: `${rng() * 100}%` as const,
-      size,
-      // Mostly dark flecks with occasional white ones, like marbled cloth.
-      color: rng() > 0.62 ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.4)',
-    };
-  });
-})();
-
-function Marble() {
-  return (
-    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-      {MARBLE.map((d, i) => (
-        <View
-          key={i}
-          style={{
-            position: 'absolute',
-            top: d.top,
-            left: d.left,
-            width: d.size,
-            height: d.size,
-            borderRadius: d.size / 2,
-            backgroundColor: d.color,
-          }}
-        />
-      ))}
-    </View>
-  );
 }
 
 const styles = StyleSheet.create({

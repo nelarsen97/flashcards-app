@@ -25,22 +25,22 @@ export const colors = {
   easy: '#7FB069', // 5+ (mature)
 } as const;
 
-// Composition-notebook cover colors, assigned per deck. Rich, slightly muted
-// tones that read as marbled covers under a white speckle and a white label.
+// Composition-notebook cover colors, assigned per deck. Vibrant, saturated tones
+// that read as marbled covers under the white speckle texture and a white label.
 export const deckCoverColors = [
-  '#3A3A3C', // classic slate/black
-  '#3E5C8A', // blue
-  '#9E4A4A', // red
-  '#3E7C5A', // green
-  '#6A5A8A', // purple
-  '#3E7C7C', // teal
-  '#A8843E', // mustard
-  '#34466B', // navy
-  '#7E3F4F', // maroon
-  '#A85C3E', // rust
-  '#5A3E6A', // plum
-  '#4F6E45', // forest
-  '#B07A3E', // ochre
+  '#262629', // classic slate/black
+  '#2C5FB0', // blue
+  '#C23B3B', // red
+  '#2E8B57', // green
+  '#7A4FB5', // purple
+  '#1C9C9C', // teal
+  '#C9961A', // mustard
+  '#27408B', // navy
+  '#A12B47', // maroon
+  '#C75A2E', // rust
+  '#6A2E8A', // plum
+  '#3C8C3C', // forest
+  '#CC8420', // ochre
 ] as const;
 
 /**
