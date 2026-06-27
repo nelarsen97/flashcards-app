@@ -1,7 +1,7 @@
 import * as DocumentPicker from 'expo-document-picker';
 import { File } from 'expo-file-system';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   Alert,
   FlatList,
@@ -16,7 +16,7 @@ import { Button } from '@/components/Button';
 import { Screen } from '@/components/Screen';
 import { createDeck, DeckWithCounts, listDecksWithCounts } from '@/db/decks';
 import { exportAllToFile, importFromText, shareBackup } from '@/lib/backup';
-import { colors, fonts, radius, shadow, spacing } from '@/theme';
+import { colors, deckCoverColor, fonts, radius, shadow, spacing } from '@/theme';
 
 export default function DecksScreen() {
   const router = useRouter();
@@ -145,10 +145,16 @@ export default function DecksScreen() {
         }
         renderItem={({ item }) => (
           <Pressable
-            style={({ pressed }) => [styles.deckRow, pressed && styles.pressed]}
+            style={({ pressed }) => [
+              styles.cover,
+              { backgroundColor: deckCoverColor(item.id) },
+              pressed && styles.pressed,
+            ]}
             onPress={() => router.push(`/deck/${item.id}`)}
           >
-            <View style={styles.deckTextWrap}>
+            <Marble seed={item.id} />
+            <View style={styles.spine} />
+            <View style={styles.label}>
               <Text style={styles.deckName} numberOfLines={1}>
                 {item.name}
               </Text>
@@ -174,6 +180,54 @@ export default function DecksScreen() {
         )}
       />
     </Screen>
+  );
+}
+
+// Small deterministic PRNG so a deck's speckle pattern is stable across renders.
+function mulberry32(seed: number) {
+  let a = seed >>> 0;
+  return () => {
+    a |= 0;
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// The marbled speckle of a composition-notebook cover: light and dark flecks
+// scattered across the cover, seeded by deck id so the pattern never shifts.
+// Sits behind the spine and label (drawn after it), and never takes touches.
+function Marble({ seed }: { seed: number }) {
+  const dots = useMemo(() => {
+    const rng = mulberry32((Math.abs(seed) * 2654435761) >>> 0 || 1);
+    return Array.from({ length: 36 }, () => {
+      const size = 1.5 + rng() * 2.5;
+      return {
+        top: `${rng() * 100}%` as const,
+        left: `${rng() * 100}%` as const,
+        size,
+        light: rng() > 0.5,
+      };
+    });
+  }, [seed]);
+  return (
+    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+      {dots.map((d, i) => (
+        <View
+          key={i}
+          style={{
+            position: 'absolute',
+            top: d.top,
+            left: d.left,
+            width: d.size,
+            height: d.size,
+            borderRadius: d.size / 2,
+            backgroundColor: d.light ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.35)',
+          }}
+        />
+      ))}
+    </View>
   );
 }
 
@@ -215,7 +269,7 @@ const styles = StyleSheet.create({
   dataLabel: {
     fontSize: 16,
     fontFamily: fonts.heading,
-    color: colors.textMuted,
+    color: colors.text,
   },
   dataRow: {
     flexDirection: 'row',
@@ -223,27 +277,46 @@ const styles = StyleSheet.create({
   },
   empty: {
     textAlign: 'center',
-    color: colors.textMuted,
+    color: colors.text,
     marginTop: spacing.xl,
     fontSize: 16,
     fontFamily: fonts.body,
   },
-  deckRow: {
+  // A composition-notebook cover: a marbled colored slab (color per deck) with a
+  // dark spine down the left and a white subject label. overflow hides the
+  // speckle at the rounded corners.
+  cover: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
+    minHeight: 88,
     borderRadius: radius.md,
-    padding: spacing.md,
+    paddingVertical: spacing.md,
+    paddingRight: spacing.md,
+    paddingLeft: spacing.lg + spacing.sm, // clear the spine
+    overflow: 'hidden',
     ...shadow.card,
   },
   pressed: {
     opacity: 0.7,
   },
-  deckTextWrap: {
+  // The black cloth spine running down the binding edge.
+  spine: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: spacing.md,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+  },
+  // The white "subject" label stuck to the cover.
+  label: {
     flex: 1,
     marginRight: spacing.md,
+    backgroundColor: colors.card,
+    borderRadius: radius.sm,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    ...shadow.card,
   },
   deckName: {
     fontSize: 22,
@@ -272,16 +345,17 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: fonts.bodyBold,
   },
+  // Written straight on the cover, so it's light to read on the marble.
   dueNumber: {
     fontSize: 22,
     fontFamily: fonts.bodyExtra,
-    color: colors.ferrule,
+    color: '#FFFFFF',
     textAlign: 'center',
   },
   dueLabel: {
     fontSize: 12,
     fontFamily: fonts.body,
-    color: colors.textMuted,
+    color: 'rgba(255,255,255,0.85)',
     textAlign: 'center',
   },
 });

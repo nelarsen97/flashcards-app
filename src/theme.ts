@@ -1,9 +1,12 @@
 export const colors = {
-  // Surfaces — warm notebook paper and index cards.
-  bg: '#FAF3E0', // notebook-paper cream page
-  card: '#FFFDF7', // index-card warm white
-  paperLine: '#C7D8EC', // ruled horizontal line (light blue)
-  marginLine: '#E5A2AB', // red/pink margin rule down the page
+  // Surfaces.
+  desk: '#D9BD8C', // light maple desk — the page background everything sits on
+  deskGrain: 'rgba(120,85,45,0.10)', // faint wood-grain streaks on the desk
+  bg: '#FAF3E0', // soft paper tint for subtle in-card surfaces / pressed states
+  card: '#FFFDF7', // index-card warm white (card front)
+  cardBack: '#E8EAEE', // desaturated, cooler card front — the "shadow" answer side
+  paperLine: '#C7D8EC', // ruled horizontal line (light blue) on a card
+  marginLine: '#E5A2AB', // red/pink margin rule on a card
   border: '#E6DCC4', // soft tan card/input border
   // Ink.
   text: '#39362F', // graphite
@@ -14,12 +17,31 @@ export const colors = {
   ferrule: '#3E8E72', // green pencil band — links / "due" accent
   eraser: '#F2A7A7', // pink eraser accent
   danger: '#D98B85', // muted coral (destructive)
+  good: '#8FB8DE', // pastel blue — the middle "Good" rating
   // Familiarity level colors (pastel red → green progression).
   hard: '#E08A86', // new / lapsed
   mid: '#EAB45E', // 1–2
   fine: '#A7C56C', // 3–4
   easy: '#7FB069', // 5+ (mature)
 } as const;
+
+// Composition-notebook cover colors, assigned per deck. Rich, slightly muted
+// tones that read as marbled covers under a white speckle and a white label.
+export const deckCoverColors = [
+  '#3A3A3C', // classic slate/black
+  '#3E5C8A', // blue
+  '#9E4A4A', // red
+  '#3E7C5A', // green
+  '#6A5A8A', // purple
+  '#3E7C7C', // teal
+  '#A8843E', // mustard
+] as const;
+
+/** Stable cover color for a deck — hashed from its id so it never shifts. */
+export function deckCoverColor(id: number): string {
+  const hash = (Math.abs(id) * 2654435761) >>> 0;
+  return deckCoverColors[hash % deckCoverColors.length];
+}
 
 /**
  * Color for a card's familiarity badge, ramping muted → orange → green as the

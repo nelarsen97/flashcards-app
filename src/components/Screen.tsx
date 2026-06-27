@@ -2,10 +2,10 @@ import { ReactNode } from 'react';
 import { StyleProp, StyleSheet, useWindowDimensions, View, ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { colors, spacing } from '@/theme';
+import { colors } from '@/theme';
 
-// Distance between ruled lines on the notebook page.
-const LINE_GAP = 30;
+// Spacing between faint wood-grain streaks on the desk.
+const GRAIN_GAP = 90;
 
 interface ScreenProps {
   children: ReactNode;
@@ -15,8 +15,8 @@ interface ScreenProps {
   /** Extra padding below the safe-area inset, e.g. breathing room above the
    *  nav bar. The bottom padding is always at least the inset. */
   bottomOffset?: number;
-  /** Draw the ruled-paper background (lines + red margin rule). Default true. */
-  paper?: boolean;
+  /** Draw the wood desk background. Default true. */
+  desk?: boolean;
 }
 
 /**
@@ -26,21 +26,21 @@ interface ScreenProps {
  * — the safe-area bottom inset is applied here, once, instead of being remembered
  * per screen.
  *
- * It also paints the school-notebook backdrop: faint blue ruled lines with a red
- * margin rule, behind the content. The backdrop is `pointerEvents="none"` so it
- * never intercepts taps; opaque cards/inputs layered on top read as index cards
- * sitting on the page. Lists/wrappers should stay transparent so the ruling
- * shows through.
+ * It also paints the wood-desk backdrop: a warm maple surface with faint grain
+ * streaks, behind the content. The backdrop is `pointerEvents="none"` so it
+ * never intercepts taps; opaque cards/inputs layered on top read as paper and
+ * supplies sitting on the desk. Lists/wrappers should stay transparent so the
+ * desk shows through between them.
  *
  * The inset is layered after `style` so a screen's own container styles can't
  * accidentally cancel it. The top is intentionally left to the navigation
  * header, which already clears the status bar.
  */
-export function Screen({ children, style, bottomOffset = 0, paper = true }: ScreenProps) {
+export function Screen({ children, style, bottomOffset = 0, desk = true }: ScreenProps) {
   const insets = useSafeAreaInsets();
   return (
     <View style={styles.root}>
-      {paper ? <RuledPaper /> : null}
+      {desk ? <DeskSurface /> : null}
       <View style={[styles.flex, style, { paddingBottom: insets.bottom + bottomOffset }]}>
         {children}
       </View>
@@ -48,36 +48,27 @@ export function Screen({ children, style, bottomOffset = 0, paper = true }: Scre
   );
 }
 
-/** The ruled-paper backdrop: evenly spaced blue lines plus a red margin rule. */
-function RuledPaper() {
-  const { height } = useWindowDimensions();
-  const lineCount = Math.ceil(height / LINE_GAP);
+/** The wood-desk backdrop: a maple base with sparse vertical grain streaks. */
+function DeskSurface() {
+  const { width } = useWindowDimensions();
+  const streaks = Math.ceil(width / GRAIN_GAP);
   return (
     <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-      {Array.from({ length: lineCount }, (_, i) => (
-        <View key={i} style={[styles.line, { top: (i + 1) * LINE_GAP }]} />
+      {Array.from({ length: streaks }, (_, i) => (
+        <View key={i} style={[styles.grain, { left: i * GRAIN_GAP + GRAIN_GAP / 2 }]} />
       ))}
-      <View style={styles.margin} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.bg },
+  root: { flex: 1, backgroundColor: colors.desk },
   flex: { flex: 1 },
-  line: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.paperLine,
-  },
-  margin: {
+  grain: {
     position: 'absolute',
     top: 0,
     bottom: 0,
-    left: spacing.xl,
-    width: 1.5,
-    backgroundColor: colors.marginLine,
+    width: 1,
+    backgroundColor: colors.deskGrain,
   },
 });

@@ -219,7 +219,7 @@ export default function PracticeScreen() {
           ) : (
             <View style={styles.summaryRow}>
               <SummaryStat label="Hard" value={tally.hard} color={colors.hard} />
-              <SummaryStat label="Fine" value={tally.fine} color={colors.mid} />
+              <SummaryStat label="Good" value={tally.fine} color={colors.good} />
               <SummaryStat label="Easy" value={tally.easy} color={colors.easy} />
             </View>
           )}
@@ -270,7 +270,7 @@ export default function PracticeScreen() {
 
       <View style={styles.ratingRow}>
         <Button title="Hard" color={colors.hard} style={styles.ratingBtn} onPress={() => handleRate('hard')} />
-        <Button title="Fine" color={colors.mid} style={styles.ratingBtn} onPress={() => handleRate('fine')} />
+        <Button title="Good" color={colors.good} style={styles.ratingBtn} onPress={() => handleRate('fine')} />
         <Button title="Easy" color={colors.easy} style={styles.ratingBtn} onPress={() => handleRate('easy')} />
       </View>
 
@@ -511,7 +511,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 16,
     fontFamily: fonts.bodyBold,
-    color: colors.textMuted,
+    color: colors.text,
     marginBottom: spacing.md,
   },
   // Clips the off-screen cards so only the current one shows through.
@@ -547,7 +547,9 @@ const styles = StyleSheet.create({
     ...shadow.card,
   },
   faceBack: {
-    backgroundColor: '#FBF1F2', // faint eraser-pink tint to distinguish the answer side
+    // A desaturated, cooler card front — reads as the front in shadow, marking
+    // the answer side without the distraction of a different hue.
+    backgroundColor: colors.cardBack,
   },
   // Faint ruled lines + red margin painted across a card face (index-card look).
   cardLine: {
