@@ -38,7 +38,7 @@ buenos días;good morning
 ## Run it during development
 
 ```bash
-npm install            # first time only
+bun install            # first time only (Bun is the package manager)
 npx expo start         # then scan the QR code with the Expo Go app on your Android phone
 ```
 
@@ -49,7 +49,7 @@ Press `a` to open in an Android emulator if you have Android Studio set up.
 Uses [EAS Build](https://docs.expo.dev/build/introduction/) (free tier, builds in the cloud):
 
 ```bash
-npm install -g eas-cli
+bun add -g eas-cli
 eas login              # create / sign in to a free Expo account
 eas build -p android --profile preview
 ```

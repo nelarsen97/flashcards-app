@@ -31,11 +31,14 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
+      # Node is still required: eas-cli and the Expo tooling run on Node.
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
 
       - name: Set up EAS
         uses: expo/expo-github-action@v8
@@ -51,7 +54,8 @@ jobs:
           fi
 
       - name: Install dependencies
-        run: npm ci
+        # EAS Build's cloud servers also auto-detect bun.lock and use Bun.
+        run: bun install --frozen-lockfile
 
       - name: Build Android APK on EAS
         run: eas build --platform android --profile ${{ inputs.profile }} --non-interactive

@@ -33,16 +33,20 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
+      # Node is still required even though Bun is the package manager: Metro, the
+      # Gradle React Native plugin, and `npx expo prebuild` below all run on Node.
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
 
       - name: Install dependencies
-        # --prefer-offline reuses the npm cache; --no-audit/--no-fund skip
-        # network/metadata work that's pointless in CI.
-        run: npm ci --prefer-offline --no-audit --no-fund
+        # --frozen-lockfile fails if bun.lock is out of date instead of mutating
+        # it (the CI equivalent of `npm ci`).
+        run: bun install --frozen-lockfile
 
       # Managed project: generate the native android/ project from app.json.
       # --no-install skips a redundant dependency install (done by npm ci above).
