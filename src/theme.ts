@@ -1,7 +1,6 @@
 export const colors = {
   // Surfaces.
   chalkboard: '#44534B', // sage chalkboard green — fallback behind the board image
-  frame: 'rgba(120,86,48,0.5)', // faint wooden frame around the board
   chalk: '#EFEBDD', // chalk white — text written straight on the board
   bg: '#FAF3E0', // soft paper tint for subtle in-card surfaces / pressed states
   card: '#FFFDF7', // index-card warm white (card front)
@@ -36,12 +35,25 @@ export const deckCoverColors = [
   '#6A5A8A', // purple
   '#3E7C7C', // teal
   '#A8843E', // mustard
+  '#34466B', // navy
+  '#7E3F4F', // maroon
+  '#A85C3E', // rust
+  '#5A3E6A', // plum
+  '#4F6E45', // forest
+  '#B07A3E', // ochre
 ] as const;
 
-/** Stable cover color for a deck — hashed from its id so it never shifts. */
+/**
+ * Stable cover color for a deck — hashed from its id so it never shifts. Uses an
+ * avalanche mix (not a plain multiply-mod, which maps consecutive ids to a short
+ * repeating cycle) so neighboring decks land on visibly different colors.
+ */
 export function deckCoverColor(id: number): string {
-  const hash = (Math.abs(id) * 2654435761) >>> 0;
-  return deckCoverColors[hash % deckCoverColors.length];
+  let h = Math.abs(id) | 0;
+  h = Math.imul(h ^ (h >>> 16), 0x45d9f3b);
+  h = Math.imul(h ^ (h >>> 16), 0x45d9f3b);
+  h = (h ^ (h >>> 16)) >>> 0;
+  return deckCoverColors[h % deckCoverColors.length];
 }
 
 /**

@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1600" viewBox="0 0 800 1600" preserveAspectRatio="xMidYMid slice">
+  <!--
+    Hand-authored chalkboard backdrop: a flat, slightly cartoonish sage board
+    dusted with big soft blocks of freshly-erased chalk. Vector, so it scales
+    cleanly to any screen under contentFit="cover" (no muddy raster edges). Soft
+    edges come from radial gradients (no filters), so it renders the same on web
+    and Android.
+  -->
+  <defs>
+    <linearGradient id="board" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4B5A51"/>
+      <stop offset="0.55" stop-color="#43524A"/>
+      <stop offset="1" stop-color="#3B4942"/>
+    </linearGradient>
+    <!-- Soft round chalk haze: bright in the middle, fading to nothing. -->
+    <radialGradient id="chalk" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#EAEFE6" stop-opacity="0.55"/>
+      <stop offset="0.6" stop-color="#EAEFE6" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#EAEFE6" stop-opacity="0"/>
+    </radialGradient>
+    <!-- Fainter haze for layering smaller wisps. -->
+    <radialGradient id="chalkFaint" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#EAEFE6" stop-opacity="0.3"/>
+      <stop offset="1" stop-color="#EAEFE6" stop-opacity="0"/>
+    </radialGradient>
+    <!-- Occasional darker smear, where the eraser left more board showing. -->
+    <radialGradient id="dark" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#2E3A34" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#2E3A34" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect x="0" y="0" width="800" height="1600" fill="#43524A"/>
+  <rect x="0" y="0" width="800" height="1600" fill="url(#board)"/>
+
+  <!-- Big erased blocks: broad swipes spread across the whole board. -->
+  <g>
+    <ellipse cx="210" cy="180" rx="360" ry="120" fill="url(#chalk)" transform="rotate(-18 210 180)"/>
+    <ellipse cx="600" cy="120" rx="280" ry="95" fill="url(#chalkFaint)" transform="rotate(12 600 120)"/>
+    <ellipse cx="170" cy="430" rx="300" ry="110" fill="url(#chalkFaint)" transform="rotate(8 170 430)"/>
+    <ellipse cx="610" cy="470" rx="340" ry="130" fill="url(#chalk)" transform="rotate(-10 610 470)"/>
+    <ellipse cx="380" cy="700" rx="380" ry="140" fill="url(#chalk)" transform="rotate(6 380 700)"/>
+    <ellipse cx="120" cy="820" rx="260" ry="100" fill="url(#chalkFaint)" transform="rotate(-14 120 820)"/>
+    <ellipse cx="660" cy="900" rx="300" ry="120" fill="url(#chalkFaint)" transform="rotate(16 660 900)"/>
+    <ellipse cx="300" cy="1050" rx="350" ry="125" fill="url(#chalk)" transform="rotate(-8 300 1050)"/>
+    <ellipse cx="640" cy="1230" rx="320" ry="115" fill="url(#chalkFaint)" transform="rotate(10 640 1230)"/>
+    <ellipse cx="180" cy="1320" rx="300" ry="110" fill="url(#chalk)" transform="rotate(-12 180 1320)"/>
+    <ellipse cx="470" cy="1470" rx="360" ry="120" fill="url(#chalkFaint)" transform="rotate(7 470 1470)"/>
+  </g>
+
+  <!-- Long thin chalk streaks left by the side of the eraser. -->
+  <g>
+    <ellipse cx="500" cy="300" rx="300" ry="16" fill="url(#chalkFaint)" transform="rotate(-22 500 300)"/>
+    <ellipse cx="250" cy="600" rx="260" ry="14" fill="url(#chalkFaint)" transform="rotate(15 250 600)"/>
+    <ellipse cx="560" cy="760" rx="320" ry="18" fill="url(#chalkFaint)" transform="rotate(-9 560 760)"/>
+    <ellipse cx="320" cy="980" rx="280" ry="15" fill="url(#chalkFaint)" transform="rotate(20 320 980)"/>
+    <ellipse cx="540" cy="1150" rx="300" ry="16" fill="url(#chalkFaint)" transform="rotate(-16 540 1150)"/>
+    <ellipse cx="260" cy="1400" rx="260" ry="14" fill="url(#chalkFaint)" transform="rotate(11 260 1400)"/>
+  </g>
+
+  <!-- A couple of darker, cleaner-wiped patches for depth. -->
+  <g>
+    <ellipse cx="700" cy="350" rx="240" ry="150" fill="url(#dark)" transform="rotate(-12 700 350)"/>
+    <ellipse cx="90" cy="650" rx="220" ry="160" fill="url(#dark)" transform="rotate(10 90 650)"/>
+    <ellipse cx="720" cy="1080" rx="230" ry="150" fill="url(#dark)" transform="rotate(-8 720 1080)"/>
+    <ellipse cx="120" cy="1180" rx="210" ry="150" fill="url(#dark)" transform="rotate(14 120 1180)"/>
+  </g>
+</svg>
