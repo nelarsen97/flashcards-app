@@ -1,4 +1,5 @@
 import { act, fireEvent, render } from '@testing-library/react-native';
+import { Platform } from 'react-native';
 
 import PracticeScreen from '@/app/deck/[id]/practice';
 import { Card, editCard, getDueCards, rateCard } from '@/db/cards';
@@ -224,6 +225,61 @@ describe('PracticeScreen', () => {
     expect(screen.getByText('Lvl 2')).toBeTruthy();
     expect(screen.getAllByText('Lvl 3')).toHaveLength(2);
     expect(screen.getByText('Lvl 0')).toBeTruthy();
+  });
+
+  it('lists a swiped-past card with just its current level badge (no transition)', async () => {
+    // Two cards at level 1. The first is swiped past (never rated); the second is
+    // rated "Good" (1 → 2), which ends the session and shows the summary.
+    mockedGetDueCards.mockResolvedValue([
+      { id: 0, deck_id: 1, front: 'front-0', back: 'back-0', familiarity: 1, due_at: 0, created_at: 0 },
+      { id: 1, deck_id: 1, front: 'front-1', back: 'back-1', familiarity: 1, due_at: 0, created_at: 0 },
+    ]);
+
+    // Swiping is a web-only keyboard path in tests (the gesture handler is
+    // stubbed, so ArrowRight is the only way to advance without rating). jest-expo
+    // runs in a node env, so stand up a minimal window keydown API for the effect.
+    const origOS = Object.getOwnPropertyDescriptor(Platform, 'OS');
+    Object.defineProperty(Platform, 'OS', { configurable: true, writable: true, value: 'web' });
+    const keydownHandlers = new Set<(e: { key: string }) => void>();
+    const origAdd = window.addEventListener;
+    const origRemove = window.removeEventListener;
+    window.addEventListener = ((type: string, fn: (e: { key: string }) => void) => {
+      if (type === 'keydown') keydownHandlers.add(fn);
+    }) as typeof window.addEventListener;
+    window.removeEventListener = ((_type: string, fn: (e: { key: string }) => void) => {
+      keydownHandlers.delete(fn);
+    }) as typeof window.removeEventListener;
+    try {
+      const screen = await render(<PracticeScreen />);
+      await screen.findByText('1 / 2');
+      await layoutViewport(screen);
+
+      // Skip the first card without rating it (ArrowRight = next).
+      await act(async () => {
+        for (const fn of keydownHandlers) fn({ key: 'ArrowRight' });
+      });
+      await screen.findByText('2 / 2');
+
+      // Rate the last card "Good" — this ends the session.
+      await fireEvent.press(screen.getByText('Good'));
+      await screen.findByText('Reviewed');
+
+      // Both words are listed, but only the rated one hit the DB.
+      expect(screen.getByText('front-0')).toBeTruthy();
+      expect(screen.getByText('front-1')).toBeTruthy();
+      expect(mockedRateCard).toHaveBeenCalledTimes(1);
+
+      // front-1 moved 1 → 2 (one transition = exactly one arrow). The swiped-past
+      // front-0 shows a single "Lvl 1" badge, so there is no second arrow and
+      // "Lvl 1" appears twice (front-0's badge + front-1's "before").
+      expect(screen.getByText('Lvl 2')).toBeTruthy();
+      expect(screen.getAllByText('→')).toHaveLength(1);
+      expect(screen.getAllByText('Lvl 1')).toHaveLength(2);
+    } finally {
+      window.addEventListener = origAdd;
+      window.removeEventListener = origRemove;
+      if (origOS) Object.defineProperty(Platform, 'OS', origOS);
+    }
   });
 
   it('shows the empty state when no cards are due', async () => {

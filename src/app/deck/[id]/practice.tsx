@@ -39,8 +39,9 @@ const CARD_GAP = spacing.md;
 
 type Phase = 'loading' | 'practice' | 'summary';
 type Tally = { hard: number; fine: number; easy: number };
-// One row in the post-session summary: a reviewed word and how its Leitner level
-// moved (`before` → `after`), derived from the rating in the summary phase.
+// One row in the post-session summary: a word seen this batch with its Leitner
+// level before and after. `before === after` means it was swiped past (or rated
+// with no net change), and the row shows a single current-level badge.
 type ReviewedCard = { id: number; front: string; before: number; after: number };
 
 // Randomly start a card on its front or back, so practice isn't always
@@ -234,39 +235,38 @@ export default function PracticeScreen() {
   }
 
   if (phase === 'summary') {
-    // Count each rated card once under its final rating (a re-rated card has a
-    // single entry in `ratings`). Cards only swiped past aren't in `ratings`.
+    // The tally counts each rated card once under its final rating (a re-rated
+    // card has a single entry in `ratings`); cards only swiped past aren't rated.
     const tally: Tally = { hard: 0, fine: 0, easy: 0 };
     for (const level of Object.values(ratings)) tally[level] += 1;
     const reviewed = Object.keys(ratings).length;
-    // The per-word review list, in batch order. `batch[i].familiarity` is the
-    // "before" level (loaded once, never mutated); `nextReview` derives the
-    // "after" level from the rating. Its familiarity output ignores the `now`
-    // argument (only due_at uses it, and we discard that), so we pass 0 — keeping
-    // this derivation pure for the render. No new state and no DB read.
-    const reviewedCards: ReviewedCard[] = [];
-    for (let i = 0; i < batch.length; i++) {
+    // Every card dealt this batch, in the order seen. A rated card carries its
+    // level change: `before` is its loaded familiarity, `after` comes from
+    // `nextReview` (whose familiarity output ignores the `now` arg — only due_at
+    // uses it, and we discard that — so passing 0 keeps this pure for the render).
+    // A card only swiped past keeps its level, so before === after and its row
+    // renders a single current-level badge instead of a transition.
+    const reviewedCards: ReviewedCard[] = batch.map((card, i) => {
       const rating = ratings[i];
-      if (!rating) continue;
-      const before = batch[i].familiarity;
-      const after = nextReview(rating, before, 0).familiarity;
-      reviewedCards.push({ id: batch[i].id, front: batch[i].front, before, after });
-    }
+      const before = card.familiarity;
+      const after = rating ? nextReview(rating, before, 0).familiarity : before;
+      return { id: card.id, front: card.front, before, after };
+    });
     return (
       <Screen style={styles.container} bottomOffset={spacing.md} title="Session summary" onBack>
         <View style={styles.summaryCard}>
           <Text style={styles.summaryTitle}>
-            {reviewed === 0 ? 'Nothing to practice' : 'Session complete'}
+            {batch.length === 0 ? 'Nothing to practice' : 'Session complete'}
           </Text>
-          {reviewed === 0 ? (
+          {batch.length === 0 ? (
             <Text style={styles.summarySub}>There are no due cards in this deck right now.</Text>
-          ) : (
+          ) : reviewed > 0 ? (
             <View style={styles.summaryRow}>
               <SummaryStat label="Hard" value={tally.hard} color={colors.hard} />
               <SummaryStat label="Good" value={tally.fine} color={colors.good} />
               <SummaryStat label="Easy" value={tally.easy} color={colors.easy} />
             </View>
-          )}
+          ) : null}
         </View>
 
         {reviewedCards.length > 0 ? (
@@ -580,17 +580,26 @@ function EditButton({ card, onEdit }: { card: Card; onEdit: (card: Card) => void
 }
 
 // A single reviewed word in the summary list: the front on the left, and its
-// level change on the right as two color-coded badges (before → after).
+// level on the right. A card whose level moved shows the change as two badges
+// (before → after); a card swiped past (or rated with no net change) shows just
+// its current level as one badge — no "Lvl 0 → Lvl 0" transition.
 function ReviewedRow({ card }: { card: ReviewedCard }) {
+  const changed = card.before !== card.after;
   return (
     <View style={styles.reviewedRow}>
       <Text style={styles.reviewedFront} numberOfLines={1}>
         {card.front}
       </Text>
       <View style={styles.reviewedChange}>
-        <LevelBadge level={card.before} />
-        <Text style={styles.reviewedArrow}>→</Text>
-        <LevelBadge level={card.after} />
+        {changed ? (
+          <>
+            <LevelBadge level={card.before} />
+            <Text style={styles.reviewedArrow}>→</Text>
+            <LevelBadge level={card.after} />
+          </>
+        ) : (
+          <LevelBadge level={card.after} />
+        )}
       </View>
     </View>
   );
