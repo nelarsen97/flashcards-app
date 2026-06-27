@@ -97,3 +97,87 @@ describe('DeckDetailScreen', () => {
     expect(screen.getByText('2 cards selected')).toBeTruthy();
   });
 });
+
+describe('DeckDetailScreen filtering', () => {
+  // due_at far in the future → "learned" (due_at > now); due_at 0 → "due".
+  const FUTURE = 2_000_000_000_000; // year 2033
+
+  // front doubles as the test label; familiarity + due_at span every level group
+  // and both sides of the due/learned split.
+  const fruit: Card[] = [
+    { id: 1, deck_id: 1, front: 'apple', back: 'apple-back', familiarity: 0, due_at: 0, created_at: 0 }, // New, Due
+    { id: 2, deck_id: 1, front: 'banana', back: 'banana-back', familiarity: 2, due_at: 0, created_at: 0 }, // Learning, Due
+    { id: 3, deck_id: 1, front: 'cherry', back: 'cherry-back', familiarity: 4, due_at: FUTURE, created_at: 0 }, // Familiar, Learned
+    { id: 4, deck_id: 1, front: 'date', back: 'date-back', familiarity: 6, due_at: FUTURE, created_at: 0 }, // Mature, Learned
+  ];
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockedGetDeck.mockResolvedValue({ id: 1, name: 'Fruit', created_at: 0 });
+    mockedListCards.mockResolvedValue(fruit);
+  });
+
+  it('shows every card before any filter is applied', async () => {
+    const screen = await render(<DeckDetailScreen />);
+    expect(await screen.findByText('apple')).toBeTruthy();
+    expect(screen.getByText('banana')).toBeTruthy();
+    expect(screen.getByText('cherry')).toBeTruthy();
+    expect(screen.getByText('date')).toBeTruthy();
+  });
+
+  it('narrows to due cards via the Due stat tile, and clears via Total', async () => {
+    const screen = await render(<DeckDetailScreen />);
+    await screen.findByText('apple');
+
+    await fireEvent.press(screen.getByLabelText('Filter by Due'));
+    expect(screen.getByText('apple')).toBeTruthy();
+    expect(screen.getByText('banana')).toBeTruthy();
+    expect(screen.queryByText('cherry')).toBeNull();
+    expect(screen.queryByText('date')).toBeNull();
+
+    // Total acts as the "show all" reset.
+    await fireEvent.press(screen.getByLabelText('Filter by Total'));
+    expect(screen.getByText('cherry')).toBeTruthy();
+    expect(screen.getByText('date')).toBeTruthy();
+  });
+
+  it('narrows to learned cards via the Learned stat tile', async () => {
+    const screen = await render(<DeckDetailScreen />);
+    await screen.findByText('apple');
+
+    await fireEvent.press(screen.getByLabelText('Filter by Learned'));
+    expect(screen.queryByText('apple')).toBeNull();
+    expect(screen.queryByText('banana')).toBeNull();
+    expect(screen.getByText('cherry')).toBeTruthy();
+    expect(screen.getByText('date')).toBeTruthy();
+  });
+
+  it('filters by a familiarity group chosen from the level menu', async () => {
+    const screen = await render(<DeckDetailScreen />);
+    await screen.findByText('apple');
+
+    await fireEvent.press(screen.getByLabelText('Filter by level'));
+    await fireEvent.press(screen.getByText('Mature'));
+
+    expect(screen.getByText('date')).toBeTruthy();
+    expect(screen.queryByText('apple')).toBeNull();
+    expect(screen.queryByText('banana')).toBeNull();
+    expect(screen.queryByText('cherry')).toBeNull();
+  });
+
+  it('shows the empty-filter state for an empty combination, then restores on Clear filters', async () => {
+    const screen = await render(<DeckDetailScreen />);
+    await screen.findByText('apple');
+
+    // Due ∩ Mature is empty here — the only mature card (date) is learned.
+    await fireEvent.press(screen.getByLabelText('Filter by Due'));
+    await fireEvent.press(screen.getByLabelText('Filter by level'));
+    await fireEvent.press(screen.getByText('Mature'));
+
+    expect(screen.getByText('No cards match your filters.')).toBeTruthy();
+
+    await fireEvent.press(screen.getByText('Clear filters'));
+    expect(screen.getByText('apple')).toBeTruthy();
+    expect(screen.getByText('date')).toBeTruthy();
+  });
+});
