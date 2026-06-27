@@ -24,7 +24,8 @@ async function openAndMigrate(): Promise<SQLite.SQLiteDatabase> {
     CREATE TABLE IF NOT EXISTS decks (
       id         INTEGER PRIMARY KEY NOT NULL,
       name       TEXT NOT NULL,
-      created_at INTEGER NOT NULL
+      created_at INTEGER NOT NULL,
+      position   INTEGER NOT NULL DEFAULT 0
     );
 
     CREATE TABLE IF NOT EXISTS cards (
@@ -44,6 +45,21 @@ async function openAndMigrate(): Promise<SQLite.SQLiteDatabase> {
   const cols = await db.getAllAsync<{ name: string }>('PRAGMA table_info(cards)');
   if (!cols.some((c) => c.name === 'familiarity')) {
     await db.execAsync('ALTER TABLE cards ADD COLUMN familiarity INTEGER NOT NULL DEFAULT 0');
+  }
+
+  // Migration: older installs predate the manual deck ordering `position`.
+  // Backfill it from the previous default ordering (newest first) so the
+  // existing visual order is preserved; from then on it's user-controlled.
+  const deckCols = await db.getAllAsync<{ name: string }>('PRAGMA table_info(decks)');
+  if (!deckCols.some((c) => c.name === 'position')) {
+    await db.execAsync('ALTER TABLE decks ADD COLUMN position INTEGER NOT NULL DEFAULT 0');
+    await db.execAsync(
+      `UPDATE decks SET position = (
+         SELECT COUNT(*) FROM decks o
+          WHERE o.created_at > decks.created_at
+             OR (o.created_at = decks.created_at AND o.id > decks.id)
+       )`
+    );
   }
 
   return db;

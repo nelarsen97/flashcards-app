@@ -20,10 +20,14 @@ jest.mock('react-native-safe-area-context', () => ({
 // under test here (we drive the session via the rating buttons), so stub them to
 // plain views/builders so the screen renders without the native runtime.
 jest.mock('react-native-reanimated', () => {
+  const React = require('react');
   const { View } = require('react-native');
   return {
     __esModule: true,
     default: { View },
+    // Stable across renders, like the real hook — an unstable shared value would
+    // churn callback identities and re-fire the session-load effect.
+    useSharedValue: (init: unknown) => React.useRef({ value: init }).current,
     useAnimatedStyle: () => ({}),
     useDerivedValue: () => ({ value: 0 }),
     withTiming: (v: number) => v,
@@ -33,6 +37,8 @@ jest.mock('react-native-reanimated', () => {
 
 jest.mock('react-native-gesture-handler', () => {
   const builder: Record<string, () => unknown> = {};
+  builder.onStart = () => builder;
+  builder.onUpdate = () => builder;
   builder.onEnd = () => builder;
   builder.activeOffsetX = () => builder;
   builder.requireExternalGestureToFail = () => builder;

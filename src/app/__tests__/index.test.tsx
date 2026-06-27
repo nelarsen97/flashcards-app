@@ -20,11 +20,41 @@ jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
 
+// The deck list is drag-reorderable; stub the reanimated/gesture-handler runtime
+// (the drag itself isn't exercised here — rows still render their content).
+jest.mock('react-native-reanimated', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  return {
+    __esModule: true,
+    default: { View },
+    useSharedValue: (init: unknown) => React.useRef({ value: init }).current,
+    useAnimatedStyle: () => ({}),
+    useAnimatedReaction: () => {},
+    withTiming: (v: unknown) => v,
+    runOnJS: (fn: (...args: unknown[]) => unknown) => fn,
+  };
+});
+
+jest.mock('react-native-gesture-handler', () => {
+  const builder: Record<string, () => unknown> = {};
+  builder.onStart = () => builder;
+  builder.onUpdate = () => builder;
+  builder.onEnd = () => builder;
+  builder.onFinalize = () => builder;
+  builder.activateAfterLongPress = () => builder;
+  return {
+    GestureDetector: ({ children }: { children: React.ReactNode }) => children,
+    Gesture: { Pan: () => builder },
+  };
+});
+
 jest.mock('expo-document-picker', () => ({ getDocumentAsync: jest.fn() }));
 
 jest.mock('@/db/decks', () => ({
   listDecksWithCounts: jest.fn(),
   createDeck: jest.fn(),
+  reorderDecks: jest.fn(),
 }));
 
 jest.mock('@/lib/backup', () => ({

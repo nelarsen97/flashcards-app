@@ -39,7 +39,7 @@ export interface BackupCounts {
 export async function exportAllToFile(): Promise<BackupCounts & { uri: string }> {
   const db = await getDb();
   const decks = await db.getAllAsync<{ id: number; name: string; created_at: number }>(
-    'SELECT id, name, created_at FROM decks ORDER BY created_at ASC'
+    'SELECT id, name, created_at FROM decks ORDER BY position ASC, id ASC'
   );
 
   const out: BackupDeck[] = [];
@@ -98,8 +98,10 @@ export async function importFromText(text: string): Promise<BackupCounts> {
   await db.withTransactionAsync(async () => {
     for (const deck of data.decks) {
       if (!deck || typeof deck.name !== 'string') continue;
+      // Append imported decks after any existing ones, preserving file order.
       const res = await db.runAsync(
-        'INSERT INTO decks (name, created_at) VALUES (?, ?)',
+        `INSERT INTO decks (name, created_at, position)
+         VALUES (?, ?, (SELECT COALESCE(MAX(position), -1) + 1 FROM decks))`,
         deck.name.trim() || 'Imported deck',
         typeof deck.created_at === 'number' ? deck.created_at : now
       );

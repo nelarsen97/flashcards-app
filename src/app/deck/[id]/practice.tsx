@@ -1,3 +1,6 @@
+/* eslint-disable react-hooks/immutability -- the swipe pager writes the track's
+   Reanimated shared value (`tx`) imperatively so it can follow the finger; the
+   React Compiler immutability rule doesn't model that idiom. */
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Modal, Platform, Pressable, StyleProp, StyleSheet, Text, TextInput, useWindowDimensions, View, ViewStyle } from 'react-native';
@@ -7,6 +10,7 @@ import Animated, {
   runOnJS,
   useAnimatedStyle,
   useDerivedValue,
+  useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
 import { Button } from '@/components/Button';
@@ -65,12 +69,12 @@ export default function PracticeScreen() {
   // `width` is measured on layout (0 until the first pass). The track slides by
   // animating its translateX to the resting position of the current card, -i*width.
   const [width, setWidth] = useState(0);
-  // Whether track moves animate. A fresh batch snaps to the first card; once you
-  // navigate, every move slides. (Mirrors the per-card flip's animate flag.)
-  const [slide, setSlide] = useState(false);
-  // Set when swiping forward past the last card: the track slides one slot past
-  // the end (the last card off-screen), then drops into the summary.
-  const [ending, setEnding] = useState(false);
+  // The track's horizontal offset, written imperatively so it can follow the
+  // finger during a drag and animate to rest on release. Resting offset for card
+  // i is -i * width; the end-of-batch slide parks it at -batch.length * width.
+  const tx = useSharedValue(0);
+  // The track offset captured when a drag starts, so onUpdate is relative to it.
+  const dragStart = useSharedValue(0);
 
   // End the session and show the summary. `remainingDue` was set when this batch
   // was dealt and the session deck doesn't grow mid-batch, so it's already right.
@@ -78,20 +82,19 @@ export default function PracticeScreen() {
     setPhase('summary');
   }, []);
 
-  // Track offset, driven declaratively from state — no imperative writes, so it
-  // stays inside what the React Compiler allows. Re-runs whenever the state it
-  // reads changes; `slide` picks animate vs. snap, and the off-screen slide
-  // (`ending`) ends the session once it lands.
-  const offset = useDerivedValue(() => {
-    const dest = -(ending ? batch.length : index) * width;
-    if (!slide) return dest;
-    return withTiming(dest, { duration: SLIDE_MS }, (finished) => {
-      if (finished && ending) runOnJS(endSession)();
-    });
-  });
   const trackStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: offset.value }],
+    transform: [{ translateX: tx.value }],
   }));
+
+  // Animate (or snap) the track to a card's resting offset.
+  const settleTo = useCallback(
+    (target: number, animate: boolean) => {
+      tx.value = animate
+        ? withTiming(-target * width, { duration: SLIDE_MS })
+        : -target * width;
+    },
+    [tx, width]
+  );
 
   // Deal the next cards off the top of the session deck. No DB query — the deck
   // was snapshotted at session start, so a card already dealt never comes back.
@@ -101,11 +104,10 @@ export default function PracticeScreen() {
     setBatch(next);
     setRemainingDue(queue.current.length);
     setIndex(0);
-    setSlide(false); // snap the track to the first card, don't slide in from the old one
-    setEnding(false);
+    tx.value = 0; // snap the track to the first card, don't slide in from the old one
     setRatings({});
     setPhase(next.length === 0 ? 'summary' : 'practice');
-  }, []);
+  }, [tx]);
 
   // Warm the text-to-speech engine on entry so the first speaker-button tap of
   // the session isn't swallowed by Android's TTS cold-start.
@@ -132,23 +134,32 @@ export default function PracticeScreen() {
   // Slide to a card without rating it. Swiping is pure navigation: it never
   // touches familiarity and never writes to the DB. Each card owns its own face,
   // so there is nothing to spoil — the track just translates into place.
-  const animateTo = useCallback((target: number) => {
-    setSlide(true);
-    setIndex(target);
-  }, []);
+  const goTo = useCallback(
+    (target: number) => {
+      setIndex(target);
+      settleTo(target, true);
+    },
+    [settleTo]
+  );
   // Swiping forward past the last card skips it (no rating) and slides off to the
   // session summary; swiping back before the first card is a no-op.
   const goNext = useCallback(() => {
     if (index + 1 >= batch.length) {
-      setSlide(true);
-      setEnding(true);
+      // Slide the last card off-screen, then drop into the summary once it lands.
+      tx.value = withTiming(-batch.length * width, { duration: SLIDE_MS }, (finished) => {
+        if (finished) runOnJS(endSession)();
+      });
     } else {
-      animateTo(index + 1);
+      goTo(index + 1);
     }
-  }, [index, batch.length, animateTo]);
+  }, [index, batch.length, width, tx, goTo, endSession]);
   const goPrev = useCallback(() => {
-    if (index > 0) animateTo(index - 1);
-  }, [index, animateTo]);
+    if (index > 0) goTo(index - 1);
+  }, [index, goTo]);
+  // Release below the navigation threshold: rubber-band back to the current card.
+  const settleBack = useCallback(() => {
+    settleTo(index, true);
+  }, [settleTo, index]);
 
   // Web fallback for swiping: arrow keys navigate while practicing.
   useEffect(() => {
@@ -194,7 +205,7 @@ export default function PracticeScreen() {
     await rateCard(card.id, level, card.familiarity);
     setRatings((r) => ({ ...r, [index]: level }));
 
-    if (index + 1 < batch.length) animateTo(index + 1);
+    if (index + 1 < batch.length) goTo(index + 1);
     else endSession();
   }
 
@@ -244,15 +255,30 @@ export default function PracticeScreen() {
     );
   }
 
-  // phase === 'practice'. The viewport clips the off-screen cards; a horizontal
-  // swipe navigates (left → next, right → prev) and the track slides to it. Each
-  // card's own tap (in PracticeCard) flips it — activeOffsetX keeps small taps
-  // from being stolen as a swipe, the role the old Race(pan, tap) played.
+  // phase === 'practice'. The viewport clips the off-screen cards; dragging
+  // horizontally pulls the whole track under the finger (left → next, right →
+  // prev) and it settles to the nearest card on release. Each card's own tap (in
+  // PracticeCard) flips it — activeOffsetX keeps small taps from being stolen as a
+  // drag, the role the old Race(pan, tap) played.
   const pan = Gesture.Pan()
     .activeOffsetX([-20, 20])
+    .onStart(() => {
+      dragStart.value = tx.value;
+    })
+    .onUpdate((e) => {
+      // The track follows the finger; rubber-band past the first/last card so the
+      // edges feel bounded instead of dragging into empty space.
+      const maxTx = 0;
+      const minTx = -(batch.length - 1) * width;
+      let next = dragStart.value + e.translationX;
+      if (next > maxTx) next = maxTx + (next - maxTx) * 0.3;
+      else if (next < minTx) next = minTx + (next - minTx) * 0.3;
+      tx.value = next;
+    })
     .onEnd((e) => {
       if (e.translationX < -SWIPE_THRESHOLD || e.velocityX < -FLICK_VELOCITY) runOnJS(goNext)();
       else if (e.translationX > SWIPE_THRESHOLD || e.velocityX > FLICK_VELOCITY) runOnJS(goPrev)();
+      else runOnJS(settleBack)();
     });
 
   return (
@@ -262,7 +288,17 @@ export default function PracticeScreen() {
         {index + 1} / {batch.length}
       </Text>
 
-      <View style={styles.viewport} onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
+      <View
+        style={styles.viewport}
+        onLayout={(e) => {
+          // Measure the viewport and re-align the track to the current card. This
+          // is the only place width changes (first layout, rotation); a live drag
+          // never resizes the viewport, so it can't fight the gesture.
+          const w = e.nativeEvent.layout.width;
+          setWidth(w);
+          tx.value = -index * w;
+        }}
+      >
         {width > 0 ? (
           <GestureDetector gesture={pan}>
             <Animated.View style={[styles.track, { width: batch.length * width }, trackStyle]}>
