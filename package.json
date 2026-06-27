@@ -47,6 +47,9 @@
     "react-test-renderer": "19.2.3",
     "typescript": "~6.0.3"
   },
+  "trustedDependencies": [
+    "better-sqlite3"
+  ],
   "scripts": {
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",

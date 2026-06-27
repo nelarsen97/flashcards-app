@@ -1,7 +1,12 @@
 # Agent notes
 
 **Expo has changed** — read the versioned docs at https://docs.expo.dev/versions/v56.0.0/
-before writing code. Add native modules with `npx expo install`, not `npm install`.
+before writing code. Add native modules with `npx expo install` (Expo detects Bun
+and installs via it), not `bun add` / `npm install`.
+
+**Bun is the package manager** (not npm). Use `bun install` and run scripts with
+`bun run <script>`. New native install scripts must be allowlisted in
+`trustedDependencies` in `package.json` (that's why `better-sqlite3` is listed).
 
 ## Stack
 - Expo SDK 56, React Native, **expo-router** (file-based routes in `src/app`, typed routes on).
@@ -14,11 +19,13 @@ before writing code. Add native modules with `npx expo install`, not `npm instal
 (e.g. SF Symbols via `expo-symbols`).
 
 ## Commands
-- `npx expo start` — dev (`a` for Android emulator).
-- `npm run lint`, `npx tsc --noEmit` — run both before finishing a change.
-- `npm test` — Jest (`jest-expo`). Tests live in `src/**/__tests__`; the data
-  layer runs against an in-memory SQLite (`__mocks__/expo-sqlite.ts`). Note
-  RNTL v14 `render`/`fireEvent` are async — `await` them.
+- `bun run start` (or `npx expo start`) — dev (`a` for Android emulator).
+- `bun run lint`, `bunx tsc --noEmit` — run both before finishing a change.
+- `bun run test` — Jest (`jest-expo`). **Use `bun run test`, NOT `bun test`** —
+  the latter invokes Bun's own runner, which can't parse React Native's source or
+  the `jest-expo` preset. Tests live in `src/**/__tests__`; the data layer runs
+  against an in-memory SQLite (`__mocks__/expo-sqlite.ts`). Note RNTL v14
+  `render`/`fireEvent` are async — `await` them.
 
 ## Conventions
 - Use theme tokens from `src/theme.ts` (`colors`/`spacing`/`radius`); don't hard-code.
