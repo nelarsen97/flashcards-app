@@ -27,6 +27,14 @@ const SWIPE_THRESHOLD = 60;
 const FLICK_VELOCITY = 500;
 // How long a slide or a flip takes.
 const SLIDE_MS = 250;
+// The cards sit in a peeking carousel: each card is narrower than the viewport so
+// the next card's edge spills into view past a gap on the right, instead of the
+// current card filling the viewport edge-to-edge. CARD_PEEK is how much of the
+// next card shows; CARD_GAP is the space between adjacent cards. The per-card
+// stride (the distance the track travels between cards) is `width - CARD_PEEK`,
+// and a card is `stride - CARD_GAP` wide.
+const CARD_PEEK = spacing.lg;
+const CARD_GAP = spacing.md;
 
 type Phase = 'loading' | 'practice' | 'summary';
 type Tally = { hard: number; fine: number; easy: number };
@@ -68,13 +76,14 @@ export default function PracticeScreen() {
   const [draftBack, setDraftBack] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
 
-  // The cards sit side by side in a horizontal track, one viewport-width each;
-  // `width` is measured on layout (0 until the first pass). The track slides by
-  // animating its translateX to the resting position of the current card, -i*width.
+  // The cards sit side by side in a horizontal track; `width` is the viewport
+  // width measured on layout (0 until the first pass). Each card occupies one
+  // stride (`width - CARD_PEEK`) so the next card peeks past the gap; the track
+  // slides by animating its translateX to the current card's resting offset.
   const [width, setWidth] = useState(0);
   // The track's horizontal offset, written imperatively so it can follow the
   // finger during a drag and animate to rest on release. Resting offset for card
-  // i is -i * width; the end-of-batch slide parks it at -batch.length * width.
+  // i is -i * stride; the end-of-batch slide parks it at -batch.length * stride.
   const tx = useSharedValue(0);
   // The track offset captured when a drag starts, so onUpdate is relative to it.
   const dragStart = useSharedValue(0);
@@ -89,12 +98,14 @@ export default function PracticeScreen() {
     transform: [{ translateX: tx.value }],
   }));
 
-  // Animate (or snap) the track to a card's resting offset.
+  // Animate (or snap) the track to a card's resting offset. Cards advance by the
+  // stride (one card + gap), not the full viewport width, so the next card peeks.
   const settleTo = useCallback(
     (target: number, animate: boolean) => {
+      const stride = width - CARD_PEEK;
       tx.value = animate
-        ? withTiming(-target * width, { duration: SLIDE_MS })
-        : -target * width;
+        ? withTiming(-target * stride, { duration: SLIDE_MS })
+        : -target * stride;
     },
     [tx, width]
   );
@@ -149,7 +160,8 @@ export default function PracticeScreen() {
   const goNext = useCallback(() => {
     if (index + 1 >= batch.length) {
       // Slide the last card off-screen, then drop into the summary once it lands.
-      tx.value = withTiming(-batch.length * width, { duration: SLIDE_MS }, (finished) => {
+      const stride = width - CARD_PEEK;
+      tx.value = withTiming(-batch.length * stride, { duration: SLIDE_MS }, (finished) => {
         if (finished) runOnJS(endSession)();
       });
     } else {
@@ -290,9 +302,10 @@ export default function PracticeScreen() {
     })
     .onUpdate((e) => {
       // The track follows the finger; rubber-band past the first/last card so the
-      // edges feel bounded instead of dragging into empty space.
+      // edges feel bounded instead of dragging into empty space. Cards advance by
+      // the stride (one card + gap), not the full viewport width.
       const maxTx = 0;
-      const minTx = -(batch.length - 1) * width;
+      const minTx = -(batch.length - 1) * (width - CARD_PEEK);
       let next = dragStart.value + e.translationX;
       if (next > maxTx) next = maxTx + (next - maxTx) * 0.3;
       else if (next < minTx) next = minTx + (next - minTx) * 0.3;
@@ -318,14 +331,21 @@ export default function PracticeScreen() {
           // never resizes the viewport, so it can't fight the gesture.
           const w = e.nativeEvent.layout.width;
           setWidth(w);
-          tx.value = -index * w;
+          tx.value = -index * (w - CARD_PEEK);
         }}
       >
         {width > 0 ? (
           <GestureDetector gesture={pan}>
-            <Animated.View style={[styles.track, { width: batch.length * width }, trackStyle]}>
+            <Animated.View
+              style={[styles.track, { width: batch.length * (width - CARD_PEEK) }, trackStyle]}
+            >
               {batch.map((c) => (
-                <PracticeCard key={c.id} card={c} width={width} onEdit={openEdit} />
+                <PracticeCard
+                  key={c.id}
+                  card={c}
+                  cardWidth={width - CARD_PEEK - CARD_GAP}
+                  onEdit={openEdit}
+                />
               ))}
             </Animated.View>
           </GestureDetector>
@@ -393,11 +413,11 @@ export default function PracticeScreen() {
 // card flips smoothly without spinning itself when it first slides into view.
 function PracticeCard({
   card,
-  width,
+  cardWidth,
   onEdit,
 }: {
   card: Card;
-  width: number;
+  cardWidth: number;
   onEdit: (card: Card) => void;
 }) {
   // Number of half-turns; only ever increases, so each tap spins the card forward
@@ -431,7 +451,7 @@ function PracticeCard({
 
   return (
     <GestureDetector gesture={tap}>
-      <View style={[styles.cardSlot, { width }]}>
+      <View style={[styles.cardSlot, { width: cardWidth }]}>
         <CardFace
           card={card}
           onEdit={onEdit}
@@ -604,16 +624,21 @@ const styles = StyleSheet.create({
     color: colors.chalk,
     marginBottom: spacing.md,
   },
-  // Clips the off-screen cards so only the current one shows through.
+  // Clips the off-screen cards to the viewport. The negative right margin cancels
+  // the screen's right padding so the viewport reaches the screen edge, letting
+  // the next card's peek spill right up to it instead of stopping at the gutter.
   viewport: {
     flex: 1,
     overflow: 'hidden',
     marginBottom: spacing.lg,
+    marginRight: -spacing.md,
   },
-  // The row of cards; its width is batch.length * viewport width, translated by offset.
+  // The row of cards; its width spans the whole batch, translated by offset. The
+  // gap sets the spacing between adjacent cards in the carousel.
   track: {
     flexDirection: 'row',
     height: '100%',
+    gap: CARD_GAP,
   },
   // One viewport-width slot holding a card's two faces.
   cardSlot: {
