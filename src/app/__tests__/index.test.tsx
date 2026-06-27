@@ -23,11 +23,12 @@ jest.mock('react-native-safe-area-context', () => ({
 // The deck list is drag-reorderable; stub the reanimated/gesture-handler runtime
 // (the drag itself isn't exercised here — rows still render their content).
 jest.mock('react-native-reanimated', () => {
+  const React = require('react');
   const { View } = require('react-native');
   return {
     __esModule: true,
     default: { View },
-    useSharedValue: (init: unknown) => ({ value: init }),
+    useSharedValue: (init: unknown) => React.useRef({ value: init }).current,
     useAnimatedStyle: () => ({}),
     useAnimatedReaction: () => {},
     withTiming: (v: unknown) => v,
