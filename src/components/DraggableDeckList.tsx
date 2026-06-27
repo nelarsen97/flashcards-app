@@ -13,6 +13,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
+import { objectMove, orderOf, Positions } from '@/components/deckReorder';
 import { spacing } from '@/theme';
 
 // Deck covers are a fixed height (their minHeight); the list lays rows out by
@@ -25,36 +26,9 @@ const SLOT = DECK_ROW_HEIGHT + ROW_GAP;
 const LIFT_DELAY_MS = 220;
 const SETTLE_MS = 200;
 
-type Positions = Record<number, number>;
-
 function clamp(value: number, min: number, max: number) {
   'worklet';
   return Math.min(Math.max(value, min), max);
-}
-
-// Move the entry at `from` to `to`, shifting everything in between by one — the
-// classic sortable-list reindex. Returns a new mapping (id -> row index).
-function objectMove(positions: Positions, from: number, to: number): Positions {
-  'worklet';
-  const next: Positions = {};
-  for (const key in positions) {
-    const pos = positions[key];
-    if (pos === from) next[key] = to;
-    else if (from < to && pos > from && pos <= to) next[key] = pos - 1;
-    else if (from > to && pos < from && pos >= to) next[key] = pos + 1;
-    else next[key] = pos;
-  }
-  return next;
-}
-
-// Flatten a positions map back into a top-to-bottom list of deck ids.
-function orderOf(positions: Positions, count: number): number[] {
-  'worklet';
-  const order: number[] = new Array(count);
-  for (const key in positions) {
-    order[positions[key]] = Number(key);
-  }
-  return order;
 }
 
 interface Identifiable {

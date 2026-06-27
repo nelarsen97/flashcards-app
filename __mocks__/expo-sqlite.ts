@@ -54,9 +54,37 @@ function wrap(raw: Database.Database) {
   };
 }
 
-/** A fresh in-memory DB on every open, so each module re-import starts clean. */
-export async function openDatabaseAsync(_name: string) {
-  return wrap(new Database(':memory:'));
+// Names that have been pre-seeded (e.g. with a legacy schema) and must persist
+// across opens so migration code can run against the seeded data. Anything not
+// in this map gets a fresh DB per open, preserving the clean-slate default that
+// the rest of the suite relies on.
+const seeded = new Map<string, Database.Database>();
+
+/**
+ * Test seam: install a connection for `name` and return the raw better-sqlite3
+ * handle so a test can create a legacy schema on it before the app opens it.
+ * Subsequent `openDatabaseAsync(name)` calls reuse this same connection.
+ */
+export function __seedDb(name: string): Database.Database {
+  const raw = new Database(':memory:');
+  seeded.set(name, raw);
+  return raw;
+}
+
+/** Test seam: drop all seeded connections (call between tests). */
+export function __resetDbs() {
+  for (const raw of seeded.values()) raw.close();
+  seeded.clear();
+}
+
+/**
+ * A fresh in-memory DB on every open, so each module re-import starts clean —
+ * unless the name was pre-seeded via `__seedDb`, in which case the seeded
+ * connection is reused so migrations run against the existing data.
+ */
+export async function openDatabaseAsync(name: string) {
+  const existing = seeded.get(name);
+  return wrap(existing ?? new Database(':memory:'));
 }
 
 export default { openDatabaseAsync };
