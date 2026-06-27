@@ -8,7 +8,7 @@ import { colors, fonts, spacing } from '@/theme';
 
 // The chalkboard texture: a hand-authored vector board dusted with freshly-erased
 // chalk. Vector, so it scales cleanly to fill any screen edge-to-edge.
-const CHALKBOARD = require('../../assets/images/chalkboard.svg');
+const CHALKBOARD = require('../../assets/images/chalkboard.png');
 
 // Height of the in-screen header's toolbar, below the status-bar inset.
 const TOOLBAR_HEIGHT = 56;
