@@ -1,4 +1,4 @@
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Modal, Platform, Pressable, StyleProp, StyleSheet, Text, TextInput, useWindowDimensions, View, ViewStyle } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -200,10 +200,9 @@ export default function PracticeScreen() {
 
   if (phase === 'loading') {
     return (
-      <View style={styles.centered}>
-        <Stack.Screen options={{ title: 'Practice' }} />
+      <Screen style={styles.centered} title="Practice" onBack>
         <ActivityIndicator color={colors.ferrule} />
-      </View>
+      </Screen>
     );
   }
 
@@ -214,8 +213,7 @@ export default function PracticeScreen() {
     for (const level of Object.values(ratings)) tally[level] += 1;
     const reviewed = Object.keys(ratings).length;
     return (
-      <Screen style={styles.container} bottomOffset={spacing.md}>
-        <Stack.Screen options={{ title: 'Session summary' }} />
+      <Screen style={styles.container} bottomOffset={spacing.md} title="Session summary" onBack>
         <View style={styles.summaryCard}>
           <Text style={styles.summaryTitle}>
             {reviewed === 0 ? 'Nothing to practice' : 'Session complete'}
@@ -256,8 +254,7 @@ export default function PracticeScreen() {
     });
 
   return (
-    <Screen style={styles.container} bottomOffset={spacing.md}>
-      <Stack.Screen options={{ title: 'Practice' }} />
+    <Screen style={styles.container} bottomOffset={spacing.md} title="Practice" onBack>
       <Text style={styles.progress}>
         {index + 1} / {batch.length}
       </Text>

@@ -6,7 +6,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
-import { colors, fonts } from '@/theme';
+import { colors } from '@/theme';
 
 // Hold the splash screen until the school fonts are ready, so no surface ever
 // flashes in a fallback font before swapping to the handwritten/rounded faces.
@@ -32,15 +32,12 @@ export default function RootLayout() {
       <StatusBar style="light" />
       <Stack
         screenOptions={{
-          headerStyle: { backgroundColor: colors.chalkboard },
-          headerShadowVisible: false,
-          headerTintColor: colors.chalk,
-          headerTitleStyle: { fontFamily: fonts.heading, fontSize: 22, color: colors.chalk },
+          // Each screen draws its own in-screen header over the chalkboard (see
+          // <Screen>), so the board texture covers the whole screen.
+          headerShown: false,
           contentStyle: { backgroundColor: colors.chalkboard },
         }}
-      >
-        <Stack.Screen name="index" options={{ title: 'Decks' }} />
-      </Stack>
+      />
     </GestureHandlerRootView>
   );
 }

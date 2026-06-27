@@ -1,7 +1,7 @@
 export const colors = {
   // Surfaces.
-  chalkboard: '#36443C', // dark chalkboard green — the background behind everything
-  chalkDust: 'rgba(255,255,255,0.07)', // faint chalk-dust flecks on the board
+  chalkboard: '#44534B', // sage chalkboard green — fallback behind the board image
+  frame: 'rgba(120,86,48,0.5)', // faint wooden frame around the board
   chalk: '#EFEBDD', // chalk white — text written straight on the board
   bg: '#FAF3E0', // soft paper tint for subtle in-card surfaces / pressed states
   card: '#FFFDF7', // index-card warm white (card front)

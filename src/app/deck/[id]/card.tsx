@@ -1,4 +1,4 @@
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
@@ -76,14 +76,12 @@ export default function CardScreen() {
   }
 
   return (
-    <Screen>
+    <Screen title={editingId != null ? 'Edit card' : 'Add card'} onBack>
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.container}
         keyboardShouldPersistTaps="handled"
       >
-        <Stack.Screen options={{ title: editingId != null ? 'Edit card' : 'Add card' }} />
-
         <Text style={styles.label}>Front</Text>
         <TextInput
           style={styles.input}

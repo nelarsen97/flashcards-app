@@ -100,7 +100,7 @@ export default function DecksScreen() {
   }
 
   return (
-    <Screen style={styles.container}>
+    <Screen style={styles.container} title="Decks">
       <View style={styles.newRow}>
         <TextInput
           style={styles.input}

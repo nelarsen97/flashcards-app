@@ -1,6 +1,6 @@
 import * as DocumentPicker from 'expo-document-picker';
 import { File } from 'expo-file-system';
-import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Alert, FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -205,26 +205,25 @@ export default function DeckDetailScreen() {
   }
 
   return (
-    <Screen style={styles.container} bottomOffset={spacing.md}>
-      <Stack.Screen
-        options={{
-          title: selecting ? 'Select cards' : name || 'Deck',
-          headerRight: selecting
-            ? undefined
-            : () => (
-                <Pressable
-                  style={({ pressed }) => [styles.headerButton, pressed && styles.pressed]}
-                  onPress={() => setMenuVisible(true)}
-                  hitSlop={spacing.sm}
-                  accessibilityRole="button"
-                  accessibilityLabel="Deck options"
-                >
-                  <Text style={styles.headerButtonIcon}>⋯</Text>
-                </Pressable>
-              ),
-        }}
-      />
-
+    <Screen
+      style={styles.container}
+      bottomOffset={spacing.md}
+      title={selecting ? 'Select cards' : name || 'Deck'}
+      onBack
+      headerRight={
+        selecting ? undefined : (
+          <Pressable
+            style={({ pressed }) => [styles.headerButton, pressed && styles.pressed]}
+            onPress={() => setMenuVisible(true)}
+            hitSlop={spacing.sm}
+            accessibilityRole="button"
+            accessibilityLabel="Deck options"
+          >
+            <Text style={styles.headerButtonIcon}>⋯</Text>
+          </Pressable>
+        )
+      }
+    >
       {renaming ? (
         <View style={styles.renameRow}>
           <TextInput
@@ -395,16 +394,16 @@ export default function DeckDetailScreen() {
         <View style={styles.actions}>
           <View style={styles.actionRow}>
             <Button
-              title={due > 0 ? 'Practice' : 'Nothing due'}
-              style={styles.flex1}
-              onPress={() => router.push(`/deck/${deckId}/practice`)}
-              disabled={due === 0}
-            />
-            <Button
               title="Add card"
               variant="secondary"
               style={styles.flex1}
               onPress={() => router.push(`/deck/${deckId}/card`)}
+            />
+            <Button
+              title={due > 0 ? 'Practice' : 'Nothing due'}
+              style={styles.flex1}
+              onPress={() => router.push(`/deck/${deckId}/practice`)}
+              disabled={due === 0}
             />
           </View>
         </View>
