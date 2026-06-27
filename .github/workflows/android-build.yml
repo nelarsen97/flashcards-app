@@ -107,11 +107,23 @@ jobs:
         working-directory: android
         # CMake initializes each module's compiler launcher from these env vars
         # the first time its build tree is configured, so every native (NDK)
-        # module compiles through ccache. CCACHE_SLOPPINESS lets time/date macros
-        # in sources still hit the cache.
+        # module compiles through ccache.
+        #
+        # The rest fix a 0% hit rate seen in early runs (ccache was invoked on
+        # ~98% of compiles but never hit):
+        #   - COMPILERCHECK=content: hash the compiler by file *content*, not its
+        #     mtime. The NDK clang is re-provisioned each run so its mtime
+        #     changes, and the default compilercheck=mtime made ccache treat
+        #     every compile as a new compiler -> 100% miss.
+        #   - BASEDIR + NOHASHDIR: strip the absolute build path from the hash so
+        #     objects compiled under /home/runner/work/... match across runs.
+        #   - SLOPPINESS: let time/date macros and include mtimes still hit.
         env:
           CMAKE_C_COMPILER_LAUNCHER: ccache
           CMAKE_CXX_COMPILER_LAUNCHER: ccache
+          CCACHE_COMPILERCHECK: content
+          CCACHE_BASEDIR: ${{ github.workspace }}
+          CCACHE_NOHASHDIR: "true"
           CCACHE_SLOPPINESS: time_macros,include_file_mtime,include_file_ctime
         run: |
           chmod +x gradlew

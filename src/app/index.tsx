@@ -4,8 +4,8 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import {
   Alert,
-  FlatList,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -13,8 +13,9 @@ import {
 } from 'react-native';
 
 import { Button } from '@/components/Button';
+import { DraggableDeckList, DECK_ROW_HEIGHT } from '@/components/DraggableDeckList';
 import { Screen } from '@/components/Screen';
-import { createDeck, DeckWithCounts, listDecksWithCounts } from '@/db/decks';
+import { createDeck, DeckWithCounts, listDecksWithCounts, reorderDecks } from '@/db/decks';
 import { exportAllToFile, importFromText, shareBackup } from '@/lib/backup';
 import { colors, deckCoverColor, fonts, radius, shadow, spacing } from '@/theme';
 
@@ -99,6 +100,16 @@ export default function DecksScreen() {
     }
   }
 
+  // Apply a drag-reordered deck list: reflect it locally right away, then
+  // persist the new order so it survives the next app start.
+  function handleReorder(orderedIds: number[]) {
+    setDecks((prev) => {
+      const byId = new Map(prev.map((d) => [d.id, d]));
+      return orderedIds.map((id) => byId.get(id)).filter((d): d is DeckWithCounts => d != null);
+    });
+    reorderDecks(orderedIds).catch(console.error);
+  }
+
   return (
     <Screen style={styles.container} title="Decks">
       <View style={styles.newRow}>
@@ -114,79 +125,85 @@ export default function DecksScreen() {
         <Button title="Add" onPress={handleCreate} disabled={!newName.trim()} loading={loading} />
       </View>
 
-      <FlatList
-        data={decks}
-        keyExtractor={(d) => String(d.id)}
+      <ScrollView
         style={styles.list}
         contentContainerStyle={styles.listContent}
-        ListEmptyComponent={
+        keyboardShouldPersistTaps="handled"
+      >
+        {decks.length === 0 ? (
           <Text style={styles.empty}>No decks yet. Create one above to get started.</Text>
-        }
-        ListFooterComponent={
-          <View style={styles.dataFooter}>
-            <Text style={styles.dataLabel}>Data</Text>
-            <View style={styles.dataRow}>
-              <Button
-                title="Back up"
-                variant="secondary"
-                style={styles.flex1}
-                onPress={handleBackup}
-                loading={backupBusy}
-              />
-              <Button
-                title="Restore"
-                variant="secondary"
-                style={styles.flex1}
-                onPress={handleRestore}
-                loading={restoreBusy}
-              />
-            </View>
-          </View>
-        }
-        renderItem={({ item }) => (
-          <Pressable
-            style={({ pressed }) => [
-              styles.cover,
-              { backgroundColor: deckCoverColor(item.id) },
-              pressed && styles.pressed,
-            ]}
-            onPress={() => router.push(`/deck/${item.id}`)}
-          >
-            <Marble />
-            <View style={styles.spine} />
-            <View style={styles.label}>
-              <View style={styles.labelLine}>
-                <Text style={styles.deckName} numberOfLines={1}>
-                  {item.name}
-                </Text>
-              </View>
-              <View style={styles.labelLine}>
-                <Text style={styles.deckMeta}>
-                  {item.total} {item.total === 1 ? 'card' : 'cards'}
-                </Text>
-              </View>
-            </View>
-            <View style={styles.rightCol}>
-              <View style={styles.dueBadge}>
-                <Text style={styles.dueNumber}>{item.due}</Text>
-                <Text style={styles.dueLabel}>due</Text>
-              </View>
-              {item.due > 0 ? (
-                <Pressable
-                  style={({ pressed }) => [styles.practiceButton, pressed && styles.pressed]}
-                  onPress={() => router.push(`/deck/${item.id}/practice`)}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Practice ${item.name}`}
-                >
-                  <Text style={styles.practiceButtonText}>Practice</Text>
-                </Pressable>
-              ) : null}
-            </View>
-          </Pressable>
+        ) : (
+          <DraggableDeckList decks={decks} onReorder={handleReorder} renderItem={renderDeck} />
         )}
-      />
+
+        <View style={styles.dataFooter}>
+          <Text style={styles.dataLabel}>Data</Text>
+          <View style={styles.dataRow}>
+            <Button
+              title="Back up"
+              variant="secondary"
+              style={styles.flex1}
+              onPress={handleBackup}
+              loading={backupBusy}
+            />
+            <Button
+              title="Restore"
+              variant="secondary"
+              style={styles.flex1}
+              onPress={handleRestore}
+              loading={restoreBusy}
+            />
+          </View>
+        </View>
+      </ScrollView>
     </Screen>
   );
+
+  // A single composition-notebook cover. Long-pressing it lifts the row for
+  // drag-reordering (handled by DraggableDeckList); a tap opens the deck.
+  function renderDeck(item: DeckWithCounts) {
+    return (
+      <Pressable
+        style={({ pressed }) => [
+          styles.cover,
+          { backgroundColor: deckCoverColor(item.id) },
+          pressed && styles.pressed,
+        ]}
+        onPress={() => router.push(`/deck/${item.id}`)}
+      >
+        <Marble />
+        <View style={styles.spine} />
+        <View style={styles.label}>
+          <View style={styles.labelLine}>
+            <Text style={styles.deckName} numberOfLines={1}>
+              {item.name}
+            </Text>
+          </View>
+          <View style={styles.labelLine}>
+            <Text style={styles.deckMeta}>
+              {item.total} {item.total === 1 ? 'card' : 'cards'}
+            </Text>
+          </View>
+        </View>
+        <View style={styles.rightCol}>
+          <View style={styles.dueBadge}>
+            <Text style={styles.dueNumber}>{item.due}</Text>
+            <Text style={styles.dueLabel}>due</Text>
+          </View>
+          {item.due > 0 ? (
+            <Pressable
+              style={({ pressed }) => [styles.practiceButton, pressed && styles.pressed]}
+              onPress={() => router.push(`/deck/${item.id}/practice`)}
+              accessibilityRole="button"
+              accessibilityLabel={`Practice ${item.name}`}
+            >
+              <Text style={styles.practiceButtonText}>Practice</Text>
+            </Pressable>
+          ) : null}
+        </View>
+      </Pressable>
+    );
+  }
 }
 
 // Small deterministic PRNG so a deck's speckle pattern is stable across renders.
@@ -298,7 +315,7 @@ const styles = StyleSheet.create({
   cover: {
     flexDirection: 'row',
     alignItems: 'center',
-    minHeight: 104,
+    height: DECK_ROW_HEIGHT,
     borderRadius: radius.md,
     paddingVertical: spacing.md,
     paddingRight: spacing.md,

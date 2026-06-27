@@ -52,18 +52,24 @@ describe('decks data layer', () => {
     expect(deck).toMatchObject({ total: 2, due: 1 });
   });
 
-  it('listDecksWithCounts orders newest deck first', async () => {
-    // Pin distinct created_at values so the DESC ordering is deterministic
-    // (back-to-back inserts can otherwise share a millisecond).
-    const nowSpy = jest.spyOn(Date, 'now');
-    nowSpy.mockReturnValue(1_000);
+  it('listDecksWithCounts appends new decks to the end of the manual order', async () => {
     await decks.createDeck('first');
-    nowSpy.mockReturnValue(2_000);
     await decks.createDeck('second');
-    nowSpy.mockRestore();
 
     const names = (await decks.listDecksWithCounts()).map((d) => d.name);
-    expect(names.indexOf('second')).toBeLessThan(names.indexOf('first'));
+    expect(names.indexOf('first')).toBeLessThan(names.indexOf('second'));
+  });
+
+  it('reorderDecks persists a new top-to-bottom order', async () => {
+    const a = await decks.createDeck('A');
+    const b = await decks.createDeck('B');
+    const c = await decks.createDeck('C');
+    // Default (creation) order is A, B, C.
+    expect((await decks.listDecksWithCounts()).map((d) => d.name)).toEqual(['A', 'B', 'C']);
+
+    // Move C to the front, then A.
+    await decks.reorderDecks([c, a, b]);
+    expect((await decks.listDecksWithCounts()).map((d) => d.name)).toEqual(['C', 'A', 'B']);
   });
 
   it('deleteDeck cascades to its cards (foreign_keys = ON)', async () => {
