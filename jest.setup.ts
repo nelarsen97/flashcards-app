@@ -7,4 +7,12 @@
  * (in-memory better-sqlite3). Data-layer test files call `jest.resetModules()`
  * in `beforeEach` to get a fresh, schema-initialized database per test.
  */
-import '@testing-library/react-native';
+import { configure } from '@testing-library/react-native';
+
+// The screen tests drive an async render + effect chain (DB load -> layout ->
+// state) behind `findBy*`/`waitFor`. RNTL's 1s default for those polls is tight
+// on a cold start or under `--coverage` instrumentation, where the first run can
+// occasionally trip a spurious timeout. Give the async helpers headroom (still
+// well under Jest's 5s test timeout) so a slow machine doesn't fail a passing
+// assertion; this only extends how long they wait, never what they accept.
+configure({ asyncUtilTimeout: 4000 });
