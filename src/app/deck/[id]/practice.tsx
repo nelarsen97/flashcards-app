@@ -11,7 +11,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Button } from '@/components/Button';
 import { Screen } from '@/components/Screen';
-import { SpeakerButton } from '@/components/SpeakerButton';
+import { SpeakerButton, prewarmSpeech } from '@/components/SpeakerButton';
 import { Card, editCard, getDueCards, rateCard, Rating } from '@/db/cards';
 import { colors, fonts, radius, shadow, spacing } from '@/theme';
 
@@ -105,6 +105,12 @@ export default function PracticeScreen() {
     setEnding(false);
     setRatings({});
     setPhase(next.length === 0 ? 'summary' : 'practice');
+  }, []);
+
+  // Warm the text-to-speech engine on entry so the first speaker-button tap of
+  // the session isn't swallowed by Android's TTS cold-start.
+  useEffect(() => {
+    prewarmSpeech();
   }, []);
 
   useEffect(() => {

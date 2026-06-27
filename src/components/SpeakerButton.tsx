@@ -20,6 +20,25 @@ function sameLanguage(a: string, b: string) {
   return pa === pb || (NORWEGIAN.has(pa) && NORWEGIAN.has(pb));
 }
 
+// Android's TTS engine cold-starts on its first utterance and silently drops it,
+// so the first tap of a speaker button appears to do nothing. Warm the engine
+// once up front — ideally when the practice screen mounts — by enumerating voices
+// and pushing a muted, throwaway utterance through the synthesizer. That muted
+// utterance absorbs the cold-start drop, so the user's first real tap speaks.
+// Module-scoped guard so the many buttons in a deck warm the engine only once.
+let warmed = false;
+export function prewarmSpeech() {
+  if (warmed) return;
+  warmed = true;
+  try {
+    Speech.getAvailableVoicesAsync().catch(() => {});
+    Speech.speak(' ', { volume: 0 });
+  } catch {
+    // Let a later call retry if the warm-up threw synchronously.
+    warmed = false;
+  }
+}
+
 /**
  * A tap-to-pronounce speaker button. Speaks `text` in `language` (a BCP 47 tag,
  * e.g. 'nb-NO' for Norwegian). Interrupts any in-progress utterance first so
