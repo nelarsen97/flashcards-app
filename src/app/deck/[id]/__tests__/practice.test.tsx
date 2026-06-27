@@ -50,6 +50,9 @@ jest.mock('react-native-gesture-handler', () => {
 });
 
 jest.mock('@/db/cards', () => ({
+  // The DB calls are stubbed, but the summary derives each card's "after" level
+  // from the real `nextReview` (pure logic), so keep the actual implementation.
+  ...jest.requireActual('@/db/cards'),
   getDueCards: jest.fn(),
   rateCard: jest.fn().mockResolvedValue(undefined),
   editCard: jest.fn().mockResolvedValue(undefined),
@@ -193,6 +196,34 @@ describe('PracticeScreen', () => {
     } finally {
       randomSpy.mockRestore();
     }
+  });
+
+  it('lists each reviewed word with its before → after level change', async () => {
+    // Two due cards at known levels so the derived "after" is predictable:
+    // a "Good" advances one level (2 → 3); a "Hard" resets to 0 (3 → 0).
+    mockedGetDueCards.mockResolvedValue([
+      { id: 0, deck_id: 1, front: 'front-0', back: 'back-0', familiarity: 2, due_at: 0, created_at: 0 },
+      { id: 1, deck_id: 1, front: 'front-1', back: 'back-1', familiarity: 3, due_at: 0, created_at: 0 },
+    ]);
+
+    const screen = await render(<PracticeScreen />);
+    await screen.findByText('1 / 2');
+    await layoutViewport(screen);
+
+    // Rate the first card "Good" (auto-advances) and the last "Hard" (ends session).
+    await fireEvent.press(screen.getByText('Good'));
+    await fireEvent.press(screen.getByText('Hard'));
+
+    // The summary lists both reviewed words under a heading.
+    await screen.findByText('Reviewed');
+    expect(screen.getByText('front-0')).toBeTruthy();
+    expect(screen.getByText('front-1')).toBeTruthy();
+
+    // Level badges reflect each change: 2→3 (Good) and 3→0 (Hard). "Lvl 3"
+    // appears twice (front-0's after and front-1's before).
+    expect(screen.getByText('Lvl 2')).toBeTruthy();
+    expect(screen.getAllByText('Lvl 3')).toHaveLength(2);
+    expect(screen.getByText('Lvl 0')).toBeTruthy();
   });
 
   it('shows the empty state when no cards are due', async () => {

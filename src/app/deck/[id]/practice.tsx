@@ -3,7 +3,7 @@
    React Compiler immutability rule doesn't model that idiom. */
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ReactNode, useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Modal, Platform, Pressable, StyleProp, StyleSheet, Text, TextInput, useWindowDimensions, View, ViewStyle } from 'react-native';
+import { ActivityIndicator, Modal, Platform, Pressable, ScrollView, StyleProp, StyleSheet, Text, TextInput, useWindowDimensions, View, ViewStyle } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   DerivedValue,
@@ -16,8 +16,8 @@ import Animated, {
 import { Button } from '@/components/Button';
 import { Screen } from '@/components/Screen';
 import { SpeakerButton, prewarmSpeech } from '@/components/SpeakerButton';
-import { Card, editCard, getDueCards, rateCard, Rating } from '@/db/cards';
-import { colors, fonts, radius, shadow, spacing } from '@/theme';
+import { Card, editCard, getDueCards, nextReview, rateCard, Rating } from '@/db/cards';
+import { colors, fonts, levelColor, radius, shadow, spacing } from '@/theme';
 
 const BATCH_SIZE = 10;
 // Horizontal travel (px) past which a pan is treated as a navigation swipe.
@@ -30,6 +30,9 @@ const SLIDE_MS = 250;
 
 type Phase = 'loading' | 'practice' | 'summary';
 type Tally = { hard: number; fine: number; easy: number };
+// One row in the post-session summary: a reviewed word and how its Leitner level
+// moved (`before` → `after`), derived from the rating in the summary phase.
+type ReviewedCard = { id: number; front: string; before: number; after: number };
 
 // Randomly start a card on its front or back, so practice isn't always
 // front-first. true = show the back first.
@@ -223,6 +226,19 @@ export default function PracticeScreen() {
     const tally: Tally = { hard: 0, fine: 0, easy: 0 };
     for (const level of Object.values(ratings)) tally[level] += 1;
     const reviewed = Object.keys(ratings).length;
+    // The per-word review list, in batch order. `batch[i].familiarity` is the
+    // "before" level (loaded once, never mutated); `nextReview` derives the
+    // "after" level from the rating. Its familiarity output ignores the `now`
+    // argument (only due_at uses it, and we discard that), so we pass 0 — keeping
+    // this derivation pure for the render. No new state and no DB read.
+    const reviewedCards: ReviewedCard[] = [];
+    for (let i = 0; i < batch.length; i++) {
+      const rating = ratings[i];
+      if (!rating) continue;
+      const before = batch[i].familiarity;
+      const after = nextReview(rating, before, 0).familiarity;
+      reviewedCards.push({ id: batch[i].id, front: batch[i].front, before, after });
+    }
     return (
       <Screen style={styles.container} bottomOffset={spacing.md} title="Session summary" onBack>
         <View style={styles.summaryCard}>
@@ -239,6 +255,15 @@ export default function PracticeScreen() {
             </View>
           )}
         </View>
+
+        {reviewedCards.length > 0 ? (
+          <ScrollView style={styles.reviewedList}>
+            <Text style={styles.reviewedHeading}>Reviewed</Text>
+            {reviewedCards.map((c) => (
+              <ReviewedRow key={c.id} card={c} />
+            ))}
+          </ScrollView>
+        ) : null}
 
         <View style={styles.summaryActions}>
           {remainingDue > 0 ? (
@@ -533,6 +558,32 @@ function EditButton({ card, onEdit }: { card: Card; onEdit: (card: Card) => void
   );
 }
 
+// A single reviewed word in the summary list: the front on the left, and its
+// level change on the right as two color-coded badges (before → after).
+function ReviewedRow({ card }: { card: ReviewedCard }) {
+  return (
+    <View style={styles.reviewedRow}>
+      <Text style={styles.reviewedFront} numberOfLines={1}>
+        {card.front}
+      </Text>
+      <View style={styles.reviewedChange}>
+        <LevelBadge level={card.before} />
+        <Text style={styles.reviewedArrow}>→</Text>
+        <LevelBadge level={card.after} />
+      </View>
+    </View>
+  );
+}
+
+// A small "Lvl N" pill tinted by the familiarity ramp (matches the deck view).
+function LevelBadge({ level }: { level: number }) {
+  return (
+    <View style={[styles.levelBadge, { backgroundColor: levelColor(level) }]}>
+      <Text style={styles.levelText}>Lvl {level}</Text>
+    </View>
+  );
+}
+
 function SummaryStat({ label, value, color }: { label: string; value: number; color: string }) {
   return (
     <View style={styles.summaryStat}>
@@ -639,6 +690,33 @@ const styles = StyleSheet.create({
   summaryValue: { fontSize: 30, fontFamily: fonts.bodyExtra, textAlign: 'center' },
   summaryLabel: { fontSize: 14, fontFamily: fonts.body, color: colors.textMuted, marginTop: 2, textAlign: 'center' },
   summaryActions: { gap: spacing.sm, marginTop: spacing.lg },
+  // The per-word reviewed list sits between the tally card and the actions, and
+  // takes the remaining height so it scrolls while the buttons stay pinned.
+  reviewedList: { flex: 1, marginTop: spacing.lg },
+  reviewedHeading: {
+    fontSize: 18,
+    fontFamily: fonts.heading,
+    color: colors.chalk,
+    marginBottom: spacing.sm,
+  },
+  reviewedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+    gap: spacing.sm,
+  },
+  reviewedFront: { flex: 1, fontSize: 16, fontFamily: fonts.bodyMedium, color: colors.chalk },
+  reviewedChange: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  reviewedArrow: { fontSize: 14, fontFamily: fonts.bodyBold, color: colors.chalk },
+  levelBadge: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: radius.sm,
+  },
+  levelText: { fontSize: 12, fontFamily: fonts.bodyBold, color: colors.text },
   flex1: { flex: 1 },
   modalBackdrop: {
     flex: 1,
