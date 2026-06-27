@@ -1,7 +1,10 @@
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
 
+import * as DocumentPicker from 'expo-document-picker';
+
 import DecksScreen from '@/app/index';
 import { createDeck, listDecksWithCounts } from '@/db/decks';
+import { exportAllToFile, importFromText, shareBackup } from '@/lib/backup';
 
 const mockPush = jest.fn();
 
@@ -65,6 +68,10 @@ jest.mock('@/lib/backup', () => ({
 
 const mockedList = listDecksWithCounts as jest.Mock;
 const mockedCreate = createDeck as jest.Mock;
+const mockedExport = exportAllToFile as jest.Mock;
+const mockedShare = shareBackup as jest.Mock;
+const mockedImport = importFromText as jest.Mock;
+const mockedGetDocument = DocumentPicker.getDocumentAsync as jest.Mock;
 
 describe('DecksScreen', () => {
   beforeEach(() => {
@@ -119,5 +126,35 @@ describe('DecksScreen', () => {
 
     await waitFor(() => expect(mockedCreate).toHaveBeenCalledWith('German'));
     expect(mockPush).toHaveBeenCalledWith('/deck/99');
+  });
+
+  it('backs up from the header overflow menu', async () => {
+    mockedExport.mockResolvedValue({ uri: 'file:///backup.json', deckCount: 2 });
+    mockedShare.mockResolvedValue(true);
+    const { getByLabelText, getByText, queryByText } = await render(<DecksScreen />);
+
+    // Back up/Restore live behind the ⋯ menu, not on the screen itself.
+    expect(queryByText('Back up')).toBeNull();
+    await fireEvent.press(getByLabelText('Data options'));
+    await fireEvent.press(getByText('Back up'));
+
+    await waitFor(() => expect(mockedExport).toHaveBeenCalled());
+    expect(mockedShare).toHaveBeenCalledWith('file:///backup.json');
+  });
+
+  it('restores from the header overflow menu', async () => {
+    mockedGetDocument.mockResolvedValue({
+      canceled: false,
+      assets: [{ uri: 'file:///pick.json' }],
+    });
+    mockedImport.mockResolvedValue({ deckCount: 1, cardCount: 5 });
+    const { getByLabelText, getByText } = await render(<DecksScreen />);
+
+    await fireEvent.press(getByLabelText('Data options'));
+    await fireEvent.press(getByText('Restore'));
+
+    await waitFor(() => expect(mockedImport).toHaveBeenCalled());
+    // The deck list reloads after a successful restore.
+    expect(mockedList).toHaveBeenCalledTimes(2);
   });
 });

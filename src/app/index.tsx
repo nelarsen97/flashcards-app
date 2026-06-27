@@ -4,6 +4,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import {
   Alert,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -11,6 +12,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
 import { DraggableDeckList, DECK_ROW_HEIGHT } from '@/components/DraggableDeckList';
@@ -19,13 +21,27 @@ import { createDeck, DeckWithCounts, listDecksWithCounts, reorderDecks } from '@
 import { exportAllToFile, importFromText, shareBackup } from '@/lib/backup';
 import { colors, deckCoverColor, fonts, radius, shadow, spacing } from '@/theme';
 
+// Default height of the Android navigation header's toolbar (excludes the
+// status-bar inset, which is added on top). Used to anchor the overflow menu
+// just below the header.
+const HEADER_TOOLBAR_HEIGHT = 56;
+
 export default function DecksScreen() {
   const router = useRouter();
+  // Drop the overflow (⋯) menu just below the header so it opens downward from
+  // the button instead of overlapping the status bar. The header height is the
+  // status-bar inset plus the default Android toolbar height.
+  const insets = useSafeAreaInsets();
+  const headerHeight = insets.top + HEADER_TOOLBAR_HEIGHT;
+
   const [decks, setDecks] = useState<DeckWithCounts[]>([]);
   const [newName, setNewName] = useState('');
   const [loading, setLoading] = useState(false);
   const [backupBusy, setBackupBusy] = useState(false);
   const [restoreBusy, setRestoreBusy] = useState(false);
+
+  // Header overflow (⋯) menu holding the backup/restore actions.
+  const [menuVisible, setMenuVisible] = useState(false);
 
   const load = useCallback(() => {
     listDecksWithCounts().then(setDecks).catch(console.error);
@@ -111,7 +127,21 @@ export default function DecksScreen() {
   }
 
   return (
-    <Screen style={styles.container} title="Decks">
+    <Screen
+      style={styles.container}
+      title="Decks"
+      headerRight={
+        <Pressable
+          style={({ pressed }) => [styles.headerButton, pressed && styles.pressed]}
+          onPress={() => setMenuVisible(true)}
+          hitSlop={spacing.sm}
+          accessibilityRole="button"
+          accessibilityLabel="Data options"
+        >
+          <Text style={styles.headerButtonIcon}>⋯</Text>
+        </Pressable>
+      }
+    >
       <View style={styles.newRow}>
         <TextInput
           style={styles.input}
@@ -135,27 +165,44 @@ export default function DecksScreen() {
         ) : (
           <DraggableDeckList decks={decks} onReorder={handleReorder} renderItem={renderDeck} />
         )}
-
-        <View style={styles.dataFooter}>
-          <Text style={styles.dataLabel}>Data</Text>
-          <View style={styles.dataRow}>
-            <Button
-              title="Back up"
-              variant="secondary"
-              style={styles.flex1}
-              onPress={handleBackup}
-              loading={backupBusy}
-            />
-            <Button
-              title="Restore"
-              variant="secondary"
-              style={styles.flex1}
-              onPress={handleRestore}
-              loading={restoreBusy}
-            />
-          </View>
-        </View>
       </ScrollView>
+
+      <Modal
+        visible={menuVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setMenuVisible(false)}
+      >
+        <Pressable
+          style={[styles.menuBackdrop, { paddingTop: headerHeight + spacing.xs }]}
+          onPress={() => setMenuVisible(false)}
+        >
+          <View style={styles.menuCard}>
+            <Pressable
+              style={({ pressed }) => [styles.menuItem, pressed && styles.pressed]}
+              onPress={() => {
+                setMenuVisible(false);
+                handleBackup();
+              }}
+              disabled={backupBusy}
+              accessibilityRole="button"
+            >
+              <Text style={styles.menuItemText}>Back up</Text>
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [styles.menuItem, styles.menuDivider, pressed && styles.pressed]}
+              onPress={() => {
+                setMenuVisible(false);
+                handleRestore();
+              }}
+              disabled={restoreBusy}
+              accessibilityRole="button"
+            >
+              <Text style={styles.menuItemText}>Restore</Text>
+            </Pressable>
+          </View>
+        </Pressable>
+      </Modal>
     </Screen>
   );
 
@@ -289,19 +336,25 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xl,
   },
   flex1: { flex: 1 },
-  dataFooter: {
-    marginTop: spacing.xl,
-    gap: spacing.sm,
+  headerButton: { paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
+  headerButtonIcon: { fontSize: 24, color: colors.chalk, fontWeight: '700', lineHeight: 24 },
+  // Overflow (⋯) menu anchored under the header's top-right corner. The top
+  // padding (header height) is applied inline so the menu opens downward from
+  // the button rather than overlapping the header/status bar.
+  menuBackdrop: { flex: 1, alignItems: 'flex-end', paddingRight: spacing.sm },
+  menuCard: {
+    backgroundColor: colors.card,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.text,
+    minWidth: 200,
+    overflow: 'hidden',
+    ...shadow.card,
   },
-  dataLabel: {
-    fontSize: 16,
-    fontFamily: fonts.heading,
-    color: colors.chalk,
-  },
-  dataRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
+  menuItem: { paddingVertical: spacing.md, paddingHorizontal: spacing.md },
+  // Hairline separators between items for clearer, higher-contrast rows.
+  menuDivider: { borderTopWidth: 1, borderTopColor: colors.border },
+  menuItemText: { fontSize: 16, fontFamily: fonts.bodyBold, color: colors.text },
   empty: {
     textAlign: 'center',
     color: colors.chalk,
