@@ -23,7 +23,7 @@ export async function listDecksWithCounts(): Promise<DeckWithCounts[]> {
        FROM decks d
        LEFT JOIN cards c ON c.deck_id = d.id
       GROUP BY d.id
-      ORDER BY d.created_at DESC`,
+      ORDER BY d.position ASC, d.id ASC`,
     now
   );
 }
@@ -35,12 +35,27 @@ export async function getDeck(id: number): Promise<Deck | null> {
 
 export async function createDeck(name: string): Promise<number> {
   const db = await getDb();
+  // New decks go to the end of the manually-ordered list.
   const result = await db.runAsync(
-    'INSERT INTO decks (name, created_at) VALUES (?, ?)',
+    `INSERT INTO decks (name, created_at, position)
+     VALUES (?, ?, (SELECT COALESCE(MAX(position), -1) + 1 FROM decks))`,
     name.trim(),
     Date.now()
   );
   return result.lastInsertRowId;
+}
+
+/**
+ * Persist a new deck order. `orderedIds` is the full list of deck ids in the
+ * desired top-to-bottom order; each deck's `position` is set to its index.
+ */
+export async function reorderDecks(orderedIds: number[]): Promise<void> {
+  const db = await getDb();
+  await db.withTransactionAsync(async () => {
+    for (let i = 0; i < orderedIds.length; i++) {
+      await db.runAsync('UPDATE decks SET position = ? WHERE id = ?', i, orderedIds[i]);
+    }
+  });
 }
 
 export async function renameDeck(id: number, name: string): Promise<void> {
