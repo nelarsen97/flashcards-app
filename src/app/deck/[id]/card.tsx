@@ -87,8 +87,6 @@ export default function CardScreen() {
           style={styles.input}
           value={front}
           onChangeText={setFront}
-          placeholder="Question / prompt"
-          placeholderTextColor={colors.textMuted}
           multiline
           autoFocus={editingId == null}
         />
@@ -98,8 +96,6 @@ export default function CardScreen() {
           style={styles.input}
           value={back}
           onChangeText={setBack}
-          placeholder="Answer"
-          placeholderTextColor={colors.textMuted}
           multiline
         />
 
