@@ -32,11 +32,11 @@ export default function RootLayout() {
       <StatusBar style="dark" />
       <Stack
         screenOptions={{
-          headerStyle: { backgroundColor: colors.bg },
+          headerStyle: { backgroundColor: colors.desk },
           headerShadowVisible: false,
           headerTintColor: colors.text,
           headerTitleStyle: { fontFamily: fonts.heading, fontSize: 22, color: colors.text },
-          contentStyle: { backgroundColor: colors.bg },
+          contentStyle: { backgroundColor: colors.desk },
         }}
       >
         <Stack.Screen name="index" options={{ title: 'Decks' }} />

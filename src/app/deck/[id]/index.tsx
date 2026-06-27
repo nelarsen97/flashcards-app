@@ -660,7 +660,7 @@ const styles = StyleSheet.create({
   list: { flex: 1 },
   listContent: { gap: spacing.sm, paddingBottom: spacing.sm },
   cardColumn: { gap: spacing.sm },
-  empty: { textAlign: 'center', color: colors.textMuted, marginTop: spacing.lg, fontFamily: fonts.body },
+  empty: { textAlign: 'center', color: colors.text, marginTop: spacing.lg, fontFamily: fonts.body },
   emptyFilter: { gap: spacing.md, alignItems: 'center' },
   // Two-column grid tile. maxWidth caps a lone trailing card at half width so
   // it lines up with the column above instead of stretching across the row.
