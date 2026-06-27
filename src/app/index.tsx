@@ -245,7 +245,14 @@ export default function DecksScreen() {
         </View>
         <View style={styles.rightCol}>
           <View style={styles.dueBadge}>
-            <Text style={styles.dueNumber}>{item.due}</Text>
+            <Text
+              style={[
+                styles.dueNumber,
+                { color: item.due > 0 ? colors.ferrule : colors.textMuted },
+              ]}
+            >
+              {item.due}
+            </Text>
             <Text style={styles.dueLabel}>due</Text>
           </View>
           {item.due > 0 ? (
@@ -380,24 +387,32 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.sm,
   },
+  // A small white chip (echoing the cover's subject label) so the due count
+  // stays readable on the white-marbled cover instead of washing out.
   dueBadge: {
     minWidth: 52,
+    alignItems: 'center',
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.sm,
+    paddingVertical: 2,
+    paddingHorizontal: spacing.sm,
+    ...shadow.card,
   },
   // The pencil stretches to the column width so every deck's button lines up.
   practicePencil: {
     alignSelf: 'stretch',
   },
-  // Written straight on the cover, so it's light to read on the marble.
   dueNumber: {
     fontSize: 22,
     fontFamily: fonts.bodyExtra,
-    color: '#FFFFFF',
     textAlign: 'center',
   },
   dueLabel: {
     fontSize: 12,
     fontFamily: fonts.body,
-    color: 'rgba(255,255,255,0.85)',
+    color: colors.textMuted,
     textAlign: 'center',
   },
 });

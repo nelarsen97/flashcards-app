@@ -9,6 +9,10 @@ const GRAPHITE = '#3A3632';
 // The shaded lower facet of the yellow body — a darker amber, not grey, so it
 // reads as the pencil's own paint in shadow.
 const PENCIL_SHADOW = 'rgba(176,120,16,0.45)';
+// A brighter Ticonderoga yellow for the body, plus a dark edge line on the
+// long sides — together they make the pencil pop off the deck covers.
+const PENCIL_BODY = '#FAD24E';
+const PENCIL_EDGE = 'rgba(45,40,32,0.55)';
 
 interface PencilButtonProps {
   title?: string;
@@ -123,15 +127,20 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    ...shadow.card,
   },
   body: {
     flex: 1,
     height: '100%',
-    backgroundColor: colors.primary,
+    backgroundColor: PENCIL_BODY,
+    // Dark edge lines on the long sides + a drop shadow lift the pencil off the
+    // deck cover so it stays distinct even on the yellow/orange covers.
+    borderTopWidth: 1.5,
+    borderBottomWidth: 1.5,
+    borderColor: PENCIL_EDGE,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: spacing.sm,
+    ...shadow.card,
   },
   // Faint facet shading so the body reads as a rounded pencil, not a flat bar.
   facetTop: {
@@ -140,7 +149,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: '28%',
-    backgroundColor: 'rgba(255,255,255,0.22)',
+    backgroundColor: 'rgba(255,255,255,0.30)',
   },
   facetBottom: {
     position: 'absolute',

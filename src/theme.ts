@@ -34,13 +34,13 @@ export const deckCoverColors = [
   '#2E8B57', // green
   '#7A4FB5', // purple
   '#1C9C9C', // teal
-  '#C9961A', // mustard
+  '#9C7012', // mustard — deepened so the yellow pencil stays distinct
   '#27408B', // navy
   '#A12B47', // maroon
-  '#C75A2E', // rust
+  '#A8431D', // rust — deepened so the yellow pencil stays distinct
   '#6A2E8A', // plum
   '#3C8C3C', // forest
-  '#CC8420', // ochre
+  '#A6651A', // ochre — deepened so the yellow pencil stays distinct
 ] as const;
 
 /**
