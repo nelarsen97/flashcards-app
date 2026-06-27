@@ -6,6 +6,9 @@ import { colors, fonts, shadow, spacing } from '@/theme';
 // illustration, so they live here rather than in the shared palette.
 const WOOD = '#E3B981';
 const GRAPHITE = '#3A3632';
+// The shaded lower facet of the yellow body — a darker amber, not grey, so it
+// reads as the pencil's own paint in shadow.
+const PENCIL_SHADOW = 'rgba(176,120,16,0.45)';
 
 interface PencilButtonProps {
   title?: string;
@@ -145,7 +148,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: '28%',
-    backgroundColor: 'rgba(0,0,0,0.10)',
+    backgroundColor: PENCIL_SHADOW,
   },
   label: {
     fontFamily: fonts.bodyBold,
