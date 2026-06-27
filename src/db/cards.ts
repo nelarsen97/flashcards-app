@@ -99,6 +99,26 @@ export async function getCard(id: number): Promise<Card | null> {
   return db.getFirstAsync<Card>('SELECT * FROM cards WHERE id = ?', id);
 }
 
+/**
+ * Case-insensitive lookup of an existing card by its (trimmed) front text,
+ * across all decks. Returns the matching deck's name, or null if none. Used by
+ * the add-card screen to warn about duplicates without blocking saving.
+ */
+export async function findDuplicateFront(front: string): Promise<{ deckName: string } | null> {
+  const trimmed = front.trim();
+  if (trimmed === '') return null;
+  const db = await getDb();
+  const row = await db.getFirstAsync<{ deckName: string }>(
+    `SELECT d.name AS deckName
+       FROM cards c JOIN decks d ON d.id = c.deck_id
+      WHERE LOWER(c.front) = LOWER(?)
+      ORDER BY c.created_at ASC
+      LIMIT 1`,
+    trimmed
+  );
+  return row ?? null;
+}
+
 export async function addCard(deckId: number, front: string, back: string): Promise<number> {
   const db = await getDb();
   const result = await db.runAsync(

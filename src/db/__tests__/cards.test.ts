@@ -159,4 +159,41 @@ describe('cards data layer', () => {
   it('importCards returns 0 for an empty list', async () => {
     expect(await cards.importCards(deckId, [])).toBe(0);
   });
+
+  describe('findDuplicateFront', () => {
+    it('returns the deck name of an exact match in another deck', async () => {
+      const other = await decks.createDeck('Easy words');
+      await cards.addCard(other, 'house', 'hus');
+      expect(await cards.findDuplicateFront('house')).toEqual({ deckName: 'Easy words' });
+    });
+
+    it('matches case-insensitively', async () => {
+      await cards.addCard(deckId, 'House', 'hus');
+      expect(await cards.findDuplicateFront('house')).toEqual({ deckName: 'Test deck' });
+    });
+
+    it('trims the search term before matching', async () => {
+      await cards.addCard(deckId, 'house', 'hus');
+      expect(await cards.findDuplicateFront('  house  ')).toEqual({ deckName: 'Test deck' });
+    });
+
+    it('returns null for empty or whitespace-only input', async () => {
+      await cards.addCard(deckId, 'house', 'hus');
+      expect(await cards.findDuplicateFront('')).toBeNull();
+      expect(await cards.findDuplicateFront('   ')).toBeNull();
+    });
+
+    it('returns null when no card matches', async () => {
+      await cards.addCard(deckId, 'house', 'hus');
+      expect(await cards.findDuplicateFront('barn')).toBeNull();
+    });
+
+    it('names the deck the match actually lives in', async () => {
+      const other = await decks.createDeck('Other');
+      await cards.addCard(other, 'house', 'hus');
+      // A non-matching card in the current deck must not change the named deck.
+      await cards.addCard(deckId, 'barn', 'lada');
+      expect(await cards.findDuplicateFront('house')).toEqual({ deckName: 'Other' });
+    });
+  });
 });
