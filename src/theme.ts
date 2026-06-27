@@ -1,10 +1,11 @@
 export const colors = {
   // Surfaces.
-  desk: '#D9BD8C', // light maple desk — the page background everything sits on
-  deskGrain: 'rgba(120,85,45,0.10)', // faint wood-grain streaks on the desk
+  chalkboard: '#36443C', // dark chalkboard green — the background behind everything
+  chalkDust: 'rgba(255,255,255,0.07)', // faint chalk-dust flecks on the board
+  chalk: '#EFEBDD', // chalk white — text written straight on the board
   bg: '#FAF3E0', // soft paper tint for subtle in-card surfaces / pressed states
   card: '#FFFDF7', // index-card warm white (card front)
-  cardBack: '#E8EAEE', // desaturated, cooler card front — the "shadow" answer side
+  cardBack: '#F2F1EF', // a hair cooler/darker than the front — a faint shadow on the answer side
   paperLine: '#C7D8EC', // ruled horizontal line (light blue) on a card
   marginLine: '#E5A2AB', // red/pink margin rule on a card
   border: '#E6DCC4', // soft tan card/input border

@@ -1,7 +1,7 @@
 import * as DocumentPicker from 'expo-document-picker';
 import { File } from 'expo-file-system';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
   Alert,
   FlatList,
@@ -152,30 +152,36 @@ export default function DecksScreen() {
             ]}
             onPress={() => router.push(`/deck/${item.id}`)}
           >
-            <Marble seed={item.id} />
+            <Marble />
             <View style={styles.spine} />
             <View style={styles.label}>
-              <Text style={styles.deckName} numberOfLines={1}>
-                {item.name}
-              </Text>
-              <Text style={styles.deckMeta}>
-                {item.total} {item.total === 1 ? 'card' : 'cards'}
-              </Text>
+              <View style={styles.labelLine}>
+                <Text style={styles.deckName} numberOfLines={1}>
+                  {item.name}
+                </Text>
+              </View>
+              <View style={styles.labelLine}>
+                <Text style={styles.deckMeta}>
+                  {item.total} {item.total === 1 ? 'card' : 'cards'}
+                </Text>
+              </View>
             </View>
-            <View style={styles.dueBadge}>
-              <Text style={styles.dueNumber}>{item.due}</Text>
-              <Text style={styles.dueLabel}>due</Text>
+            <View style={styles.rightCol}>
+              <View style={styles.dueBadge}>
+                <Text style={styles.dueNumber}>{item.due}</Text>
+                <Text style={styles.dueLabel}>due</Text>
+              </View>
+              {item.due > 0 ? (
+                <Pressable
+                  style={({ pressed }) => [styles.practiceButton, pressed && styles.pressed]}
+                  onPress={() => router.push(`/deck/${item.id}/practice`)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Practice ${item.name}`}
+                >
+                  <Text style={styles.practiceButtonText}>Practice</Text>
+                </Pressable>
+              ) : null}
             </View>
-            {item.due > 0 ? (
-              <Pressable
-                style={({ pressed }) => [styles.practiceButton, pressed && styles.pressed]}
-                onPress={() => router.push(`/deck/${item.id}/practice`)}
-                accessibilityRole="button"
-                accessibilityLabel={`Practice ${item.name}`}
-              >
-                <Text style={styles.practiceButtonText}>Practice</Text>
-              </Pressable>
-            ) : null}
           </Pressable>
         )}
       />
@@ -195,25 +201,29 @@ function mulberry32(seed: number) {
   };
 }
 
-// The marbled speckle of a composition-notebook cover: light and dark flecks
-// scattered across the cover, seeded by deck id so the pattern never shifts.
-// Sits behind the spine and label (drawn after it), and never takes touches.
-function Marble({ seed }: { seed: number }) {
-  const dots = useMemo(() => {
-    const rng = mulberry32((Math.abs(seed) * 2654435761) >>> 0 || 1);
-    return Array.from({ length: 36 }, () => {
-      const size = 1.5 + rng() * 2.5;
-      return {
-        top: `${rng() * 100}%` as const,
-        left: `${rng() * 100}%` as const,
-        size,
-        light: rng() > 0.5,
-      };
-    });
-  }, [seed]);
+// One fixed marble pattern, generated once and shared by every cover — just
+// like real composition books, which all carry the same marbling in different
+// colors. The cover tints it by showing its base color through the gaps. Dense
+// light + dark flecks read as marble; sits behind the spine/label and takes no
+// touches.
+const MARBLE = (() => {
+  const rng = mulberry32(0x5bd1e995);
+  return Array.from({ length: 130 }, () => {
+    const size = 1 + rng() * 3;
+    return {
+      top: `${rng() * 100}%` as const,
+      left: `${rng() * 100}%` as const,
+      size,
+      // Mostly dark flecks with occasional white ones, like marbled cloth.
+      color: rng() > 0.62 ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.4)',
+    };
+  });
+})();
+
+function Marble() {
   return (
     <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-      {dots.map((d, i) => (
+      {MARBLE.map((d, i) => (
         <View
           key={i}
           style={{
@@ -223,7 +233,7 @@ function Marble({ seed }: { seed: number }) {
             width: d.size,
             height: d.size,
             borderRadius: d.size / 2,
-            backgroundColor: d.light ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.35)',
+            backgroundColor: d.color,
           }}
         />
       ))}
@@ -269,7 +279,7 @@ const styles = StyleSheet.create({
   dataLabel: {
     fontSize: 16,
     fontFamily: fonts.heading,
-    color: colors.text,
+    color: colors.chalk,
   },
   dataRow: {
     flexDirection: 'row',
@@ -277,7 +287,7 @@ const styles = StyleSheet.create({
   },
   empty: {
     textAlign: 'center',
-    color: colors.text,
+    color: colors.chalk,
     marginTop: spacing.xl,
     fontSize: 16,
     fontFamily: fonts.body,
@@ -288,7 +298,7 @@ const styles = StyleSheet.create({
   cover: {
     flexDirection: 'row',
     alignItems: 'center',
-    minHeight: 88,
+    minHeight: 104,
     borderRadius: radius.md,
     paddingVertical: spacing.md,
     paddingRight: spacing.md,
@@ -308,15 +318,22 @@ const styles = StyleSheet.create({
     width: spacing.md,
     backgroundColor: 'rgba(0,0,0,0.55)',
   },
-  // The white "subject" label stuck to the cover.
+  // The white "subject" label stuck to the cover — runs long across the cover.
   label: {
     flex: 1,
     marginRight: spacing.md,
     backgroundColor: colors.card,
     borderRadius: radius.sm,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.sm + 2,
     paddingHorizontal: spacing.md,
+    gap: spacing.sm,
     ...shadow.card,
+  },
+  // Each label field sits on its own ruled writing line.
+  labelLine: {
+    borderBottomWidth: 1,
+    borderBottomColor: colors.paperLine,
+    paddingBottom: 3,
   },
   deckName: {
     fontSize: 22,
@@ -324,10 +341,13 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   deckMeta: {
-    marginTop: 2,
     fontSize: 13,
     fontFamily: fonts.body,
     color: colors.textMuted,
+  },
+  rightCol: {
+    alignItems: 'center',
+    gap: spacing.sm,
   },
   dueBadge: {
     minWidth: 52,
