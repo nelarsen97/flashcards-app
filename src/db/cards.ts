@@ -173,6 +173,19 @@ export async function getDueCards(deckId: number): Promise<Card[]> {
   );
 }
 
+/** All currently-learned (not-yet-due) cards for a deck, randomized once. The
+ * mirror of getDueCards for the opt-in "practice learned cards" path: the user
+ * studies cards ahead of schedule. The practice screen snapshots and batches it
+ * the same way, so a card shown in a session never reappears in it. */
+export async function getLearnedCards(deckId: number): Promise<Card[]> {
+  const db = await getDb();
+  return db.getAllAsync<Card>(
+    'SELECT * FROM cards WHERE deck_id = ? AND due_at > ? ORDER BY RANDOM()',
+    deckId,
+    Date.now()
+  );
+}
+
 /**
  * Apply a rating to a card, updating its familiarity level and due_at.
  *

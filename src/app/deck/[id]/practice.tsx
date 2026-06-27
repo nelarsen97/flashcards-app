@@ -17,7 +17,7 @@ import { Button } from '@/components/Button';
 import { PencilButton } from '@/components/PencilButton';
 import { Screen } from '@/components/Screen';
 import { SpeakerButton, prewarmSpeech } from '@/components/SpeakerButton';
-import { Card, editCard, getDueCards, nextReview, rateCard, Rating } from '@/db/cards';
+import { Card, editCard, getDueCards, getLearnedCards, nextReview, rateCard, Rating } from '@/db/cards';
 import { colors, fonts, levelColor, radius, shadow, spacing } from '@/theme';
 
 const BATCH_SIZE = 10;
@@ -68,9 +68,13 @@ type ReviewedCard = { id: number; front: string; before: number; after: number }
 const randomFace = () => Math.random() < 0.5;
 
 export default function PracticeScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, mode } = useLocalSearchParams<{ id: string; mode?: string }>();
   const deckId = Number(id);
   const router = useRouter();
+  // Opt-in "study learned cards" path (reached from the deck's Learned filter):
+  // the session draws from the not-yet-due cards instead of the due ones.
+  const learnedMode = mode === 'learned';
+  const title = learnedMode ? 'Practice learned' : 'Practice';
 
   const [phase, setPhase] = useState<Phase>('loading');
   // The session deck: due cards snapshotted once at session start, randomized,
@@ -157,12 +161,14 @@ export default function PracticeScreen() {
   }, []);
 
   useEffect(() => {
-    // Snapshot the due cards once for this session, then deal the first batch.
+    // Snapshot the session's cards once, then deal the first batch — the due set
+    // normally, or the learned (not-yet-due) set in the opt-in study-ahead mode.
     // `phase` already starts at 'loading', so the screen shows the spinner until
     // this resolves — no synchronous setState needed here. `cancelled` guards
     // against a resolve after unmount (exiting practice before the load lands).
     let cancelled = false;
-    getDueCards(deckId).then((cards) => {
+    const fetchCards = learnedMode ? getLearnedCards : getDueCards;
+    fetchCards(deckId).then((cards) => {
       if (cancelled) return;
       queue.current = cards;
       loadBatch();
@@ -170,7 +176,7 @@ export default function PracticeScreen() {
     return () => {
       cancelled = true;
     };
-  }, [deckId, loadBatch]);
+  }, [deckId, learnedMode, loadBatch]);
 
   // Slide to a card without rating it. Swiping is pure navigation: it never
   // touches familiarity and never writes to the DB. Each card owns its own face,
@@ -258,7 +264,7 @@ export default function PracticeScreen() {
 
   if (phase === 'loading') {
     return (
-      <Screen style={styles.centered} title="Practice" onBack>
+      <Screen style={styles.centered} title={title} onBack>
         <ActivityIndicator color={colors.ferrule} />
       </Screen>
     );
@@ -289,7 +295,11 @@ export default function PracticeScreen() {
             {batch.length === 0 ? 'Nothing to practice' : 'Session complete'}
           </Text>
           {batch.length === 0 ? (
-            <Text style={styles.summarySub}>There are no due cards in this deck right now.</Text>
+            <Text style={styles.summarySub}>
+              {learnedMode
+                ? 'There are no learned cards in this deck right now.'
+                : 'There are no due cards in this deck right now.'}
+            </Text>
           ) : reviewed > 0 ? (
             <View style={styles.summaryRow}>
               <SummaryStat label="Hard" value={tally.hard} color={colors.hard} />
@@ -349,7 +359,7 @@ export default function PracticeScreen() {
     });
 
   return (
-    <Screen style={styles.container} bottomOffset={spacing.md} title="Practice" onBack>
+    <Screen style={styles.container} bottomOffset={spacing.md} title={title} onBack>
       <Text style={styles.progress}>
         {index + 1} / {batch.length}
       </Text>

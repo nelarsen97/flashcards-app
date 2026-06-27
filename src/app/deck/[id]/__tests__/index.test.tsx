@@ -152,6 +152,28 @@ describe('DeckDetailScreen filtering', () => {
     expect(screen.getByText('date')).toBeTruthy();
   });
 
+  it('practises learned cards behind a confirmation prompt', async () => {
+    const screen = await render(<DeckDetailScreen />);
+    await screen.findByText('apple');
+
+    // With no learned filter, Practice goes straight to the due session.
+    expect(screen.getByText('Practice')).toBeTruthy();
+    expect(screen.queryByText('Practice learned')).toBeNull();
+
+    // Activating the Learned filter swaps in the study-ahead button (2 learned).
+    await fireEvent.press(screen.getByLabelText('Filter by Learned'));
+    const learnedButton = screen.getByText('Practice learned');
+
+    // Tapping it opens the confirmation rather than navigating immediately.
+    await fireEvent.press(learnedButton);
+    expect(screen.getByText('Study learned cards?')).toBeTruthy();
+    expect(mockPush).not.toHaveBeenCalled();
+
+    // Confirming routes into practice in learned mode.
+    await fireEvent.press(screen.getByText('Practice'));
+    expect(mockPush).toHaveBeenCalledWith('/deck/1/practice?mode=learned');
+  });
+
   it('filters by a familiarity group chosen from the level menu', async () => {
     const screen = await render(<DeckDetailScreen />);
     await screen.findByText('apple');

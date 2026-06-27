@@ -2,12 +2,17 @@ import { act, fireEvent, render } from '@testing-library/react-native';
 import { Platform } from 'react-native';
 
 import PracticeScreen from '@/app/deck/[id]/practice';
-import { Card, editCard, getDueCards, rateCard } from '@/db/cards';
+import { Card, editCard, getDueCards, getLearnedCards, rateCard } from '@/db/cards';
 
-// expo-router: the screen reads the deck id from the route and only calls
-// router.back() from the Done button, which these tests don't exercise.
+// The route params the screen reads — mutable so a test can flip into the
+// learned-mode path (?mode=learned) before rendering.
+let mockRouteParams: { id: string; mode?: string } = { id: '1' };
+
+// expo-router: the screen reads the deck id (and optional mode) from the route
+// and only calls router.back() from the Done button, which these tests don't
+// exercise.
 jest.mock('expo-router', () => ({
-  useLocalSearchParams: () => ({ id: '1' }),
+  useLocalSearchParams: () => mockRouteParams,
   useRouter: () => ({ back: jest.fn() }),
   Stack: { Screen: () => null },
   __esModule: true,
@@ -55,11 +60,13 @@ jest.mock('@/db/cards', () => ({
   // from the real `nextReview` (pure logic), so keep the actual implementation.
   ...jest.requireActual('@/db/cards'),
   getDueCards: jest.fn(),
+  getLearnedCards: jest.fn(),
   rateCard: jest.fn().mockResolvedValue(undefined),
   editCard: jest.fn().mockResolvedValue(undefined),
 }));
 
 const mockedGetDueCards = getDueCards as jest.Mock;
+const mockedGetLearnedCards = getLearnedCards as jest.Mock;
 const mockedRateCard = rateCard as jest.Mock;
 const mockedEditCard = editCard as jest.Mock;
 
@@ -107,6 +114,7 @@ const frontsOnScreen = (screen: Screen): string[] =>
 describe('PracticeScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockRouteParams = { id: '1' };
   });
 
   it('never repeats a card within a session, even when rated due again', async () => {
@@ -288,5 +296,28 @@ describe('PracticeScreen', () => {
     const screen = await render(<PracticeScreen />);
     await screen.findByText('There are no due cards in this deck right now.');
     expect(mockedRateCard).not.toHaveBeenCalled();
+  });
+
+  it('draws from the learned set in study-ahead mode (?mode=learned)', async () => {
+    mockRouteParams = { id: '1', mode: 'learned' };
+    mockedGetLearnedCards.mockResolvedValue(makeCards(2));
+
+    const screen = await render(<PracticeScreen />);
+    await screen.findByText('1 / 2');
+
+    // The learned set is fetched; the due set is never touched in this mode.
+    expect(mockedGetLearnedCards).toHaveBeenCalledTimes(1);
+    expect(mockedGetDueCards).not.toHaveBeenCalled();
+    // The header reflects the study-ahead mode.
+    expect(screen.getByText('Practice learned')).toBeTruthy();
+  });
+
+  it('shows a learned-specific empty state when nothing is learned', async () => {
+    mockRouteParams = { id: '1', mode: 'learned' };
+    mockedGetLearnedCards.mockResolvedValue([]);
+
+    const screen = await render(<PracticeScreen />);
+    await screen.findByText('There are no learned cards in this deck right now.');
+    expect(mockedGetDueCards).not.toHaveBeenCalled();
   });
 });

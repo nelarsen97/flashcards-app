@@ -47,6 +47,21 @@ describe('cards data layer', () => {
     expect((await cards.getDueCards(deckId)).map((c) => c.front).sort()).toEqual(['b', 'c']);
   });
 
+  it('getLearnedCards returns only the not-yet-due cards', async () => {
+    await cards.addCard(deckId, 'a', '1');
+    await cards.addCard(deckId, 'b', '2');
+    await cards.addCard(deckId, 'c', '3');
+
+    // All cards start due, so none are "learned" yet.
+    expect(await cards.getLearnedCards(deckId)).toEqual([]);
+
+    // Rating a card pushes it past now — it becomes learned and drops out of due.
+    const all = await cards.listCards(deckId);
+    await cards.rateCard(all[0].id, 'fine');
+    expect((await cards.getLearnedCards(deckId)).map((c) => c.front)).toEqual(['a']);
+    expect((await cards.getDueCards(deckId)).map((c) => c.front).sort()).toEqual(['b', 'c']);
+  });
+
   it('addCard starts a card at familiarity 0', async () => {
     const id = await cards.addCard(deckId, 'a', '1');
     expect((await cards.getCard(id))!.familiarity).toBe(0);

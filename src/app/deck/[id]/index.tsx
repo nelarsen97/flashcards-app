@@ -59,6 +59,10 @@ export default function DeckDetailScreen() {
   // Header overflow (⋯) menu holding the deck-management actions.
   const [menuVisible, setMenuVisible] = useState(false);
 
+  // Confirmation before studying learned (not-yet-due) cards ahead of schedule,
+  // offered when the Learned filter is active and Practice is tapped.
+  const [confirmLearned, setConfirmLearned] = useState(false);
+
   // Selection mode: pick cards to move into another deck.
   const [selecting, setSelecting] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
@@ -421,12 +425,23 @@ export default function DeckDetailScreen() {
               style={styles.flex1}
               onPress={() => router.push(`/deck/${deckId}/card`)}
             />
-            <PencilButton
-              title={due > 0 ? 'Practice' : 'Nothing due'}
-              style={styles.flex1}
-              onPress={() => router.push(`/deck/${deckId}/practice`)}
-              disabled={due === 0}
-            />
+            {status === 'learned' ? (
+              // The Learned filter is active: Practice studies the not-yet-due
+              // cards ahead of schedule, behind a confirmation prompt.
+              <PencilButton
+                title={learned > 0 ? 'Practice learned' : 'None learned'}
+                style={styles.flex1}
+                onPress={() => setConfirmLearned(true)}
+                disabled={learned === 0}
+              />
+            ) : (
+              <PencilButton
+                title={due > 0 ? 'Practice' : 'Nothing due'}
+                style={styles.flex1}
+                onPress={() => router.push(`/deck/${deckId}/practice`)}
+                disabled={due === 0}
+              />
+            )}
           </View>
         </View>
       )}
@@ -510,6 +525,38 @@ export default function DeckDetailScreen() {
               />
             )}
             <Button title="Cancel" variant="secondary" onPress={() => setPickerVisible(false)} />
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={confirmLearned}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setConfirmLearned(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Study learned cards?</Text>
+            <Text style={styles.confirmText}>
+              {`These ${learned} ${learned === 1 ? "card isn't" : "cards aren't"} due yet. Practising them early can reset their schedule.`}
+            </Text>
+            <View style={styles.confirmActions}>
+              <Button
+                title="Cancel"
+                variant="secondary"
+                style={styles.flex1}
+                onPress={() => setConfirmLearned(false)}
+              />
+              <Button
+                title="Practice"
+                style={styles.flex1}
+                onPress={() => {
+                  setConfirmLearned(false);
+                  router.push(`/deck/${deckId}/practice?mode=learned`);
+                }}
+              />
+            </View>
           </View>
         </View>
       </Modal>
@@ -752,6 +799,8 @@ const styles = StyleSheet.create({
     maxHeight: '70%',
   },
   modalTitle: { fontSize: 22, fontFamily: fonts.heading, color: colors.text, marginBottom: spacing.xs },
+  confirmText: { fontSize: 15, fontFamily: fonts.body, color: colors.textMuted, lineHeight: 22 },
+  confirmActions: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm },
   modalEmpty: { color: colors.textMuted, textAlign: 'center', paddingVertical: spacing.lg, fontFamily: fonts.body },
   modalList: { flexGrow: 0 },
   modalListContent: { gap: spacing.sm },
