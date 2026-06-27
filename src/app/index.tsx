@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
 import { DraggableDeckList, DECK_ROW_HEIGHT } from '@/components/DraggableDeckList';
+import { PencilButton } from '@/components/PencilButton';
 import { Screen } from '@/components/Screen';
 import { createDeck, DeckWithCounts, listDecksWithCounts, reorderDecks } from '@/db/decks';
 import { exportAllToFile, importFromText, shareBackup } from '@/lib/backup';
@@ -248,14 +249,12 @@ export default function DecksScreen() {
             <Text style={styles.dueLabel}>due</Text>
           </View>
           {item.due > 0 ? (
-            <Pressable
-              style={({ pressed }) => [styles.practiceButton, pressed && styles.pressed]}
+            <PencilButton
+              compact
+              style={styles.practicePencil}
               onPress={() => router.push(`/deck/${item.id}/practice`)}
-              accessibilityRole="button"
               accessibilityLabel={`Practice ${item.name}`}
-            >
-              <Text style={styles.practiceButtonText}>Practice</Text>
-            </Pressable>
+            />
           ) : null}
         </View>
       </Pressable>
@@ -384,19 +383,9 @@ const styles = StyleSheet.create({
   dueBadge: {
     minWidth: 52,
   },
-  practiceButton: {
+  // The pencil stretches to the column width so every deck's button lines up.
+  practicePencil: {
     alignSelf: 'stretch',
-    backgroundColor: colors.primary,
-    borderRadius: radius.pill,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.sm,
-    ...shadow.card,
-  },
-  practiceButtonText: {
-    color: colors.primaryText,
-    fontSize: 14,
-    fontFamily: fonts.bodyBold,
-    textAlign: 'center',
   },
   // Written straight on the cover, so it's light to read on the marble.
   dueNumber: {

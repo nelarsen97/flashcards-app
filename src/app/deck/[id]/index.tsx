@@ -6,6 +6,8 @@ import { Alert, FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View } 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
+import { EraserButton } from '@/components/EraserButton';
+import { PencilButton } from '@/components/PencilButton';
 import { Screen } from '@/components/Screen';
 import {
   Card,
@@ -374,9 +376,8 @@ export default function DeckDetailScreen() {
             {selectedIds.size} {selectedIds.size === 1 ? 'card' : 'cards'} selected
           </Text>
           <View style={styles.actionRow}>
-            <Button
+            <EraserButton
               title={`Delete${selectedIds.size > 0 ? ` (${selectedIds.size})` : ''}`}
-              variant="danger"
               style={styles.flex1}
               onPress={confirmDeleteSelected}
               disabled={selectedIds.size === 0}
@@ -399,7 +400,7 @@ export default function DeckDetailScreen() {
               style={styles.flex1}
               onPress={() => router.push(`/deck/${deckId}/card`)}
             />
-            <Button
+            <PencilButton
               title={due > 0 ? 'Practice' : 'Nothing due'}
               style={styles.flex1}
               onPress={() => router.push(`/deck/${deckId}/practice`)}

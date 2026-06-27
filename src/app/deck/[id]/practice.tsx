@@ -14,6 +14,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { Button } from '@/components/Button';
+import { PencilButton } from '@/components/PencilButton';
 import { Screen } from '@/components/Screen';
 import { SpeakerButton, prewarmSpeech } from '@/components/SpeakerButton';
 import { Card, editCard, getDueCards, nextReview, rateCard, Rating } from '@/db/cards';
@@ -279,7 +280,7 @@ export default function PracticeScreen() {
 
         <View style={styles.summaryActions}>
           {remainingDue > 0 ? (
-            <Button
+            <PencilButton
               title={`Practice ${Math.min(remainingDue, BATCH_SIZE)} more`}
               onPress={loadBatch}
             />

@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { Button } from '@/components/Button';
+import { EraserButton } from '@/components/EraserButton';
 import { Screen } from '@/components/Screen';
 import { addCard, deleteCard, editCard, getCard } from '@/db/cards';
 import { colors, fonts, radius, spacing } from '@/theme';
@@ -109,7 +110,7 @@ export default function CardScreen() {
           {editingId == null ? (
             <Button title="Save & add another" variant="secondary" onPress={handleSaveAndNew} disabled={!canSave} />
           ) : (
-            <Button title="Delete card" variant="danger" onPress={confirmDelete} />
+            <EraserButton title="Delete card" onPress={confirmDelete} />
           )}
         </View>
       </ScrollView>
