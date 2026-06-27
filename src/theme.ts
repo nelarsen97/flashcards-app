@@ -44,12 +44,20 @@ export const deckCoverColors = [
 ] as const;
 
 /**
- * Stable cover color for a deck — hashed from its id so it never shifts. Uses an
- * avalanche mix (not a plain multiply-mod, which maps consecutive ids to a short
- * repeating cycle) so neighboring decks land on visibly different colors.
+ * Reseed knob for the deck cover palette: mixed into the hash below so bumping it
+ * reshuffles every deck's cover color wholesale, while each deck stays stable for
+ * a given value. Bump to any new 32-bit constant to reseed again.
+ */
+const COVER_SEED = 0x1802462e;
+
+/**
+ * Stable cover color for a deck — hashed from its id (and COVER_SEED) so it never
+ * shifts. Uses an avalanche mix (not a plain multiply-mod, which maps consecutive
+ * ids to a short repeating cycle) so neighboring decks land on visibly different
+ * colors.
  */
 export function deckCoverColor(id: number): string {
-  let h = Math.abs(id) | 0;
+  let h = (Math.abs(id) | 0) ^ COVER_SEED;
   h = Math.imul(h ^ (h >>> 16), 0x45d9f3b);
   h = Math.imul(h ^ (h >>> 16), 0x45d9f3b);
   h = (h ^ (h >>> 16)) >>> 0;

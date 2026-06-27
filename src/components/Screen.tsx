@@ -6,8 +6,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { colors, fonts, spacing } from '@/theme';
 
-// The chalkboard texture: a hand-authored vector board dusted with freshly-erased
-// chalk. Vector, so it scales cleanly to fill any screen edge-to-edge.
+// The chalkboard texture: a photographic slate board dusted with freshly-erased
+// chalk, painted edge-to-edge behind every screen (contentFit="cover").
 const CHALKBOARD = require('../../assets/images/chalkboard.png');
 
 // Height of the in-screen header's toolbar, below the status-bar inset.
