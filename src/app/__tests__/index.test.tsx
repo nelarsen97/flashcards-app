@@ -1,10 +1,11 @@
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import { Alert } from 'react-native';
 
 import * as DocumentPicker from 'expo-document-picker';
 
 import DecksScreen from '@/app/index';
 import { createDeck, listDecksWithCounts } from '@/db/decks';
-import { exportAllToFile, importFromText, shareBackup } from '@/lib/backup';
+import { exportAllToFile, restoreFromText, shareBackup } from '@/lib/backup';
 
 const mockPush = jest.fn();
 
@@ -62,7 +63,7 @@ jest.mock('@/db/decks', () => ({
 
 jest.mock('@/lib/backup', () => ({
   exportAllToFile: jest.fn(),
-  importFromText: jest.fn(),
+  restoreFromText: jest.fn(),
   shareBackup: jest.fn(),
 }));
 
@@ -70,7 +71,7 @@ const mockedList = listDecksWithCounts as jest.Mock;
 const mockedCreate = createDeck as jest.Mock;
 const mockedExport = exportAllToFile as jest.Mock;
 const mockedShare = shareBackup as jest.Mock;
-const mockedImport = importFromText as jest.Mock;
+const mockedRestore = restoreFromText as jest.Mock;
 const mockedGetDocument = DocumentPicker.getDocumentAsync as jest.Mock;
 
 describe('DecksScreen', () => {
@@ -142,19 +143,47 @@ describe('DecksScreen', () => {
     expect(mockedShare).toHaveBeenCalledWith('file:///backup.json');
   });
 
-  it('restores from the header overflow menu', async () => {
+  it('restores from the header overflow menu after confirming the replace', async () => {
     mockedGetDocument.mockResolvedValue({
       canceled: false,
       assets: [{ uri: 'file:///pick.json' }],
     });
-    mockedImport.mockResolvedValue({ deckCount: 1, cardCount: 5 });
+    mockedRestore.mockResolvedValue({ deckCount: 1, cardCount: 5 });
+    // Restore now confirms the destructive whole-library replace first; auto-tap
+    // "Replace" (the destructive button) so the restore proceeds.
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation((_title, _msg, buttons) => {
+      buttons?.find((b) => b.style === 'destructive')?.onPress?.();
+    });
+
     const { getByLabelText, getByText } = await render(<DecksScreen />);
 
     await fireEvent.press(getByLabelText('Data options'));
     await fireEvent.press(getByText('Restore'));
 
-    await waitFor(() => expect(mockedImport).toHaveBeenCalled());
+    await waitFor(() => expect(mockedRestore).toHaveBeenCalled());
     // The deck list reloads after a successful restore.
     expect(mockedList).toHaveBeenCalledTimes(2);
+    alertSpy.mockRestore();
+  });
+
+  it('does not restore if the replace is declined', async () => {
+    mockedGetDocument.mockResolvedValue({
+      canceled: false,
+      assets: [{ uri: 'file:///pick.json' }],
+    });
+    mockedRestore.mockResolvedValue({ deckCount: 1, cardCount: 5 });
+    // Tap "Cancel" on the confirmation: the library must be left untouched.
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation((_title, _msg, buttons) => {
+      buttons?.find((b) => b.style === 'cancel')?.onPress?.();
+    });
+
+    const { getByLabelText, getByText } = await render(<DecksScreen />);
+
+    await fireEvent.press(getByLabelText('Data options'));
+    await fireEvent.press(getByText('Restore'));
+
+    await waitFor(() => expect(mockedGetDocument).toHaveBeenCalled());
+    expect(mockedRestore).not.toHaveBeenCalled();
+    alertSpy.mockRestore();
   });
 });

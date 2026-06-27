@@ -14,15 +14,22 @@ describe('backup import/export', () => {
     cards = require('@/db/cards');
   });
 
-  describe('importFromText validation', () => {
+  describe('restoreFromText validation', () => {
     it('rejects text that is not valid JSON', async () => {
-      await expect(backup.importFromText('not json')).rejects.toThrow('Not valid JSON.');
+      await expect(backup.restoreFromText('not json')).rejects.toThrow('Not valid JSON.');
     });
 
     it('rejects JSON that is not a backup file', async () => {
-      await expect(backup.importFromText('{}')).rejects.toThrow('Not a flashcards backup file.');
-      await expect(backup.importFromText('{"decks":"nope"}')).rejects.toThrow(
+      await expect(backup.restoreFromText('{}')).rejects.toThrow('Not a flashcards backup file.');
+      await expect(backup.restoreFromText('{"decks":"nope"}')).rejects.toThrow(
         'Not a flashcards backup file.'
+      );
+    });
+
+    it('rejects a backup written by a newer app version', async () => {
+      const text = JSON.stringify({ version: 999, decks: [] });
+      await expect(backup.restoreFromText(text)).rejects.toThrow(
+        'This backup was made by a newer version of the app.'
       );
     });
 
@@ -42,30 +49,50 @@ describe('backup import/export', () => {
           },
         ],
       });
-      const { deckCount, cardCount } = await backup.importFromText(text);
+      const { deckCount, cardCount } = await backup.restoreFromText(text);
       expect(deckCount).toBe(1);
       expect(cardCount).toBe(1);
     });
 
     it('defaults a blank deck name to "Imported deck"', async () => {
       const text = JSON.stringify({ decks: [{ name: '   ', cards: [] }] });
-      await backup.importFromText(text);
+      await backup.restoreFromText(text);
       const list = await decks.listDecksWithCounts();
       expect(list.map((d) => d.name)).toContain('Imported deck');
     });
   });
 
-  it('appends decks without clobbering an existing library', async () => {
+  it('replaces the existing library instead of appending to it', async () => {
     const existing = await decks.createDeck('Existing');
     await cards.addCard(existing, 'keep', 'me');
 
     const text = JSON.stringify({ decks: [{ name: 'Imported', cards: [{ front: 'a', back: '1' }] }] });
-    const { deckCount, cardCount } = await backup.importFromText(text);
+    const { deckCount, cardCount } = await backup.restoreFromText(text);
 
     expect(deckCount).toBe(1);
     expect(cardCount).toBe(1);
-    const names = (await decks.listDecksWithCounts()).map((d) => d.name).sort();
-    expect(names).toEqual(['Existing', 'Imported']);
+    // The old deck and its card are gone; only the imported library remains (no
+    // duplication, no leftover of the previous data).
+    const list = await decks.listDecksWithCounts();
+    expect(list.map((d) => d.name)).toEqual(['Imported']);
+    expect(list[0].total).toBe(1);
+  });
+
+  it('leaves the existing library intact when the restore is rejected', async () => {
+    const existing = await decks.createDeck('Existing');
+    await cards.addCard(existing, 'keep', 'me');
+
+    // Each of these is rejected before any deletion happens (bad JSON, not a
+    // backup, newer-than-supported version), so the wipe never runs.
+    await expect(backup.restoreFromText('not json')).rejects.toThrow();
+    await expect(backup.restoreFromText('{}')).rejects.toThrow();
+    await expect(
+      backup.restoreFromText(JSON.stringify({ version: 999, decks: [] }))
+    ).rejects.toThrow();
+
+    const list = await decks.listDecksWithCounts();
+    expect(list.map((d) => d.name)).toEqual(['Existing']);
+    expect(list[0].total).toBe(1);
   });
 
   it('preserves due_at and created_at on restore', async () => {
@@ -74,7 +101,7 @@ describe('backup import/export', () => {
     const text = JSON.stringify({
       decks: [{ name: 'D', created_at: createdAt, cards: [{ front: 'a', back: '1', due_at: dueAt, created_at: createdAt }] }],
     });
-    await backup.importFromText(text);
+    await backup.restoreFromText(text);
 
     const deck = (await decks.listDecksWithCounts())[0];
     const card = (await cards.listCards(deck.id))[0];
@@ -99,7 +126,7 @@ describe('backup import/export', () => {
     // Re-import into a fresh DB to confirm the file fully describes the library.
     jest.resetModules();
     const backup2 = require('@/lib/backup');
-    const { deckCount, cardCount } = await backup2.importFromText(text);
+    const { deckCount, cardCount } = await backup2.restoreFromText(text);
     expect(deckCount).toBe(2);
     expect(cardCount).toBe(3);
   });

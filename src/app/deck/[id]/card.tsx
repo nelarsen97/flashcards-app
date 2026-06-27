@@ -74,6 +74,9 @@ export default function CardScreen() {
         await addCard(deckId, front, back);
       }
       router.back();
+    } catch (e) {
+      console.error(e);
+      Alert.alert('Save failed', 'Could not save the card. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -87,6 +90,9 @@ export default function CardScreen() {
       await addCard(deckId, front, back);
       setFront('');
       setBack('');
+    } catch (e) {
+      console.error(e);
+      Alert.alert('Save failed', 'Could not save the card. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -100,8 +106,13 @@ export default function CardScreen() {
         text: 'Delete',
         style: 'destructive',
         onPress: async () => {
-          await deleteCard(editingId);
-          router.back();
+          try {
+            await deleteCard(editingId);
+            router.back();
+          } catch (e) {
+            console.error(e);
+            Alert.alert('Delete failed', 'Could not delete the card. Please try again.');
+          }
         },
       },
     ]);

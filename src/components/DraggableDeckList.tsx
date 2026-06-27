@@ -115,7 +115,9 @@ function DraggableRow({
     .onStart(() => {
       isActive.value = true;
       activeId.value = id;
-      startTop.value = positions.value[id] * SLOT;
+      // Same `?? index` fallback as the initial `top`: a deck dragged before the
+      // resync effect has populated the map would otherwise seed startTop to NaN.
+      startTop.value = (positions.value[id] ?? index) * SLOT;
     })
     .onUpdate((event) => {
       // The active row tracks the finger; its slot index is recomputed so the

@@ -87,6 +87,10 @@ export default function PracticeScreen() {
   // How many due cards are left after this batch — sizes the next round and its
   // button label (capped at BATCH_SIZE).
   const [remainingDue, setRemainingDue] = useState(0);
+  // True while a rating's DB write is in flight, so the Hard/Good/Easy buttons
+  // disable themselves and a fast double-tap can't rate the same card twice (or
+  // rate during the slide to the next card).
+  const [isRating, setIsRating] = useState(false);
 
   // Inline card editing. `editing` is the card whose front/back is open in the
   // modal (null = closed); the drafts hold the in-progress text. Tracking the
@@ -236,14 +240,20 @@ export default function PracticeScreen() {
 
   async function handleRate(level: Rating) {
     const card = batch[index];
-    if (!card) return;
-    // Rate from the card's original level (its loaded value, never mutated), so a
-    // re-rate after swiping back replaces the earlier rating instead of stacking.
-    await rateCard(card.id, level, card.familiarity);
-    setRatings((r) => ({ ...r, [index]: level }));
+    if (!card || isRating) return;
+    setIsRating(true);
+    try {
+      // Rate from the card's original level (its loaded value, never mutated), so
+      // a re-rate after swiping back replaces the earlier rating instead of
+      // stacking.
+      await rateCard(card.id, level, card.familiarity);
+      setRatings((r) => ({ ...r, [index]: level }));
 
-    if (index + 1 < batch.length) goTo(index + 1);
-    else endSession();
+      if (index + 1 < batch.length) goTo(index + 1);
+      else endSession();
+    } finally {
+      setIsRating(false);
+    }
   }
 
   if (phase === 'loading') {
@@ -374,9 +384,9 @@ export default function PracticeScreen() {
       </View>
 
       <View style={styles.ratingRow}>
-        <Button title="Hard" color={colors.hard} style={styles.ratingBtn} onPress={() => handleRate('hard')} />
-        <Button title="Good" color={colors.good} style={styles.ratingBtn} onPress={() => handleRate('fine')} />
-        <Button title="Easy" color={colors.easy} style={styles.ratingBtn} onPress={() => handleRate('easy')} />
+        <Button title="Hard" color={colors.hard} style={styles.ratingBtn} disabled={isRating} onPress={() => handleRate('hard')} />
+        <Button title="Good" color={colors.good} style={styles.ratingBtn} disabled={isRating} onPress={() => handleRate('fine')} />
+        <Button title="Easy" color={colors.easy} style={styles.ratingBtn} disabled={isRating} onPress={() => handleRate('easy')} />
       </View>
 
       <Modal

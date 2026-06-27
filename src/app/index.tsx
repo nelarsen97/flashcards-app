@@ -20,7 +20,7 @@ import { DraggableDeckList, DECK_ROW_HEIGHT } from '@/components/DraggableDeckLi
 import { PencilButton } from '@/components/PencilButton';
 import { Screen } from '@/components/Screen';
 import { createDeck, DeckWithCounts, listDecksWithCounts, reorderDecks } from '@/db/decks';
-import { exportAllToFile, importFromText, shareBackup } from '@/lib/backup';
+import { exportAllToFile, restoreFromText, shareBackup } from '@/lib/backup';
 import { colors, deckCoverColor, fonts, radius, shadow, spacing } from '@/theme';
 
 // The composition-notebook marble: white speckles on transparent, painted over
@@ -31,6 +31,22 @@ const NOTEBOOK_SPECKLE = require('../../assets/images/notebook-speckle.png');
 // status-bar inset, which is added on top). Used to anchor the overflow menu
 // just below the header.
 const HEADER_TOOLBAR_HEIGHT = 56;
+
+// Confirm the destructive whole-library replace before a restore. Resolves true
+// only if the user taps Replace; Cancel or a dismiss resolves false.
+function confirmReplaceAll(): Promise<boolean> {
+  return new Promise((resolve) => {
+    Alert.alert(
+      'Replace all data?',
+      'Restoring deletes your current decks and cards, then loads the backup in their place. If the file turns out to be invalid, your current data is kept.',
+      [
+        { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+        { text: 'Replace', style: 'destructive', onPress: () => resolve(true) },
+      ],
+      { cancelable: true, onDismiss: () => resolve(false) }
+    );
+  });
+}
 
 export default function DecksScreen() {
   const router = useRouter();
@@ -105,18 +121,27 @@ export default function DecksScreen() {
       });
       if (result.canceled || !result.assets?.[0]) return;
 
+      // Restore replaces the whole library, so confirm before wiping. If the
+      // chosen file turns out to be invalid the existing data is kept anyway
+      // (restoreFromText validates before it deletes), but the wipe is
+      // destructive enough to warrant an explicit yes.
+      if (!(await confirmReplaceAll())) return;
+
       const text = await new File(result.assets[0].uri).text();
-      const { deckCount, cardCount } = await importFromText(text);
+      const { deckCount, cardCount } = await restoreFromText(text);
       load();
       Alert.alert(
         'Restore complete',
-        `Added ${deckCount} ${deckCount === 1 ? 'deck' : 'decks'} and ${cardCount} ${
+        `Replaced your library with ${deckCount} ${deckCount === 1 ? 'deck' : 'decks'} and ${cardCount} ${
           cardCount === 1 ? 'card' : 'cards'
         }.`
       );
     } catch (e) {
       console.error(e);
-      Alert.alert('Restore failed', 'That file is not a valid flashcards backup.');
+      Alert.alert(
+        'Restore failed',
+        'That file is not a valid flashcards backup. Your existing data was left unchanged.'
+      );
     } finally {
       setRestoreBusy(false);
     }

@@ -97,9 +97,14 @@ export default function DeckDetailScreen() {
   async function handleRename() {
     const next = draftName.trim();
     if (!next) return;
-    await renameDeck(deckId, next);
-    setName(next);
-    setRenaming(false);
+    try {
+      await renameDeck(deckId, next);
+      setName(next);
+      setRenaming(false);
+    } catch (e) {
+      console.error(e);
+      Alert.alert('Rename failed', 'Could not rename the deck. Please try again.');
+    }
   }
 
   function confirmDelete() {
@@ -109,8 +114,13 @@ export default function DeckDetailScreen() {
         text: 'Delete',
         style: 'destructive',
         onPress: async () => {
-          await deleteDeck(deckId);
-          router.back();
+          try {
+            await deleteDeck(deckId);
+            router.back();
+          } catch (e) {
+            console.error(e);
+            Alert.alert('Delete failed', 'Could not delete the deck. Please try again.');
+          }
         },
       },
     ]);
@@ -185,9 +195,14 @@ export default function DeckDetailScreen() {
           text: 'Delete',
           style: 'destructive',
           onPress: async () => {
-            await deleteCards([...selectedIds]);
-            cancelSelecting();
-            load();
+            try {
+              await deleteCards([...selectedIds]);
+              cancelSelecting();
+              load();
+            } catch (e) {
+              console.error(e);
+              Alert.alert('Delete failed', 'Could not delete the selected cards. Please try again.');
+            }
           },
         },
       ]
@@ -196,14 +211,19 @@ export default function DeckDetailScreen() {
 
   async function handleMoveTo(target: DeckWithCounts) {
     const ids = [...selectedIds];
-    await moveCards(ids, target.id);
-    setPickerVisible(false);
-    cancelSelecting();
-    load();
-    Alert.alert(
-      'Cards moved',
-      `Moved ${ids.length} ${ids.length === 1 ? 'card' : 'cards'} to "${target.name}".`
-    );
+    try {
+      await moveCards(ids, target.id);
+      setPickerVisible(false);
+      cancelSelecting();
+      load();
+      Alert.alert(
+        'Cards moved',
+        `Moved ${ids.length} ${ids.length === 1 ? 'card' : 'cards'} to "${target.name}".`
+      );
+    } catch (e) {
+      console.error(e);
+      Alert.alert('Move failed', 'Could not move the selected cards. Please try again.');
+    }
   }
 
   return (
