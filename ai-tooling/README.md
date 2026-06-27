@@ -26,3 +26,15 @@ The flow seeds a deck + cards through the UI (web SQLite is empty per browser
 context), then shots home, deck detail, the card form, and practice
 (front + flipped). Edit the steps at the bottom of the script to target a
 different surface. `screenshots/` is gitignored — these are throwaway artifacts.
+
+## generate-chalkboard.js
+
+Procedurally generates the app's chalkboard background — a dark green board
+smudged with freshly-erased chalk — and writes `assets/images/chalkboard.png`
+(committed; `src/components/Screen.tsx` renders it). Pure Node + `pngjs`, no
+image-gen API. Deterministic; tweak the constants at the top and re-run to
+iterate on the look.
+
+```sh
+node ai-tooling/generate-chalkboard.js
+```

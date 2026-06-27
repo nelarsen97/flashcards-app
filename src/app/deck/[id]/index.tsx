@@ -436,7 +436,7 @@ export default function DeckDetailScreen() {
               <Text style={styles.menuItemText}>Rename deck</Text>
             </Pressable>
             <Pressable
-              style={({ pressed }) => [styles.menuItem, pressed && styles.pressed]}
+              style={({ pressed }) => [styles.menuItem, styles.menuDivider, pressed && styles.pressed]}
               onPress={() => {
                 setMenuVisible(false);
                 handleImport();
@@ -446,7 +446,7 @@ export default function DeckDetailScreen() {
               <Text style={styles.menuItemText}>Import CSV</Text>
             </Pressable>
             <Pressable
-              style={({ pressed }) => [styles.menuItem, pressed && styles.pressed]}
+              style={({ pressed }) => [styles.menuItem, styles.menuDivider, pressed && styles.pressed]}
               onPress={() => {
                 setMenuVisible(false);
                 confirmDelete();
@@ -752,12 +752,15 @@ const styles = StyleSheet.create({
     backgroundColor: colors.card,
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: colors.border,
-    paddingVertical: spacing.xs,
-    minWidth: 180,
+    borderColor: colors.text,
+    minWidth: 200,
+    overflow: 'hidden',
+    ...shadow.card,
   },
-  menuItem: { paddingVertical: spacing.sm, paddingHorizontal: spacing.md },
-  menuItemText: { fontSize: 15, fontFamily: fonts.body, color: colors.text },
+  menuItem: { paddingVertical: spacing.md, paddingHorizontal: spacing.md },
+  // Hairline separators between items for clearer, higher-contrast rows.
+  menuDivider: { borderTopWidth: 1, borderTopColor: colors.border },
+  menuItemText: { fontSize: 16, fontFamily: fonts.bodyBold, color: colors.text },
   menuItemDanger: { color: colors.danger, fontFamily: fonts.bodyBold },
   levelOption: {
     flexDirection: 'row',

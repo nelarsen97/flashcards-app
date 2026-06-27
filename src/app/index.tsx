@@ -309,14 +309,15 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: 0.7,
   },
-  // The black cloth spine running down the binding edge.
+  // The black cloth spine running down the binding edge — solid, no marble
+  // showing through.
   spine: {
     position: 'absolute',
     left: 0,
     top: 0,
     bottom: 0,
     width: spacing.md,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    backgroundColor: '#141414',
   },
   // The white "subject" label stuck to the cover — runs long across the cover.
   label: {
@@ -345,7 +346,10 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body,
     color: colors.textMuted,
   },
+  // Fixed width so the label is always the same size, whether or not a deck has
+  // a Practice button (no due cards → no button).
   rightCol: {
+    width: 104,
     alignItems: 'center',
     gap: spacing.sm,
   },
@@ -353,10 +357,10 @@ const styles = StyleSheet.create({
     minWidth: 52,
   },
   practiceButton: {
-    marginLeft: spacing.sm,
+    alignSelf: 'stretch',
     backgroundColor: colors.primary,
     borderRadius: radius.pill,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.sm,
     paddingVertical: spacing.sm,
     ...shadow.card,
   },
@@ -364,6 +368,7 @@ const styles = StyleSheet.create({
     color: colors.primaryText,
     fontSize: 14,
     fontFamily: fonts.bodyBold,
+    textAlign: 'center',
   },
   // Written straight on the cover, so it's light to read on the marble.
   dueNumber: {
