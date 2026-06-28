@@ -79,6 +79,16 @@ describe('DeckDetailScreen', () => {
     expect(screen.queryByText('Select cards')).toBeNull();
   });
 
+  it('navigates to the bulk-add screen from the overflow menu', async () => {
+    const screen = await render(<DeckDetailScreen />);
+    await screen.findByText('front-1');
+
+    await fireEvent.press(screen.getByLabelText('Deck options'));
+    await fireEvent.press(screen.getByText('Bulk add cards'));
+
+    expect(mockPush).toHaveBeenCalledWith('/deck/1/bulk');
+  });
+
   it('enters selection mode on long-press, pre-selecting the pressed card', async () => {
     const screen = await render(<DeckDetailScreen />);
     await screen.findByText('front-1');
