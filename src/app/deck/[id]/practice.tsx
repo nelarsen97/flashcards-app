@@ -358,6 +358,12 @@ export default function PracticeScreen() {
       else runOnJS(settleBack)();
     });
 
+  // Size each card to a square off the measured width — the classic Post-It
+  // shape — rather than filling the whole column height. The viewport takes this
+  // height (below), so the rating row rises to sit just under the shorter card.
+  const cardW = width > 0 ? strideFor(width) - CARD_GAP : 0;
+  const cardH = cardW;
+
   return (
     <Screen style={styles.container} bottomOffset={spacing.md} surface="paper" title={title} onBack>
       <Text style={styles.progress}>
@@ -365,7 +371,7 @@ export default function PracticeScreen() {
       </Text>
 
       <View
-        style={styles.viewport}
+        style={[styles.viewport, { height: cardH }]}
         onLayout={(e) => {
           // Measure the viewport and re-align the track to the current card. This
           // is the only place width changes (first layout, rotation); a live drag
@@ -384,7 +390,7 @@ export default function PracticeScreen() {
                 <PracticeCard
                   key={c.id}
                   card={c}
-                  cardWidth={strideFor(width) - CARD_GAP}
+                  cardWidth={cardW}
                   onEdit={openEdit}
                 />
               ))}
@@ -660,8 +666,10 @@ const styles = StyleSheet.create({
   // the screen's horizontal padding so the viewport reaches both screen edges,
   // letting each neighbour's peek spill right up to the edge instead of stopping
   // at the gutter — symmetric on the left (previous card) and right (next card).
+  // Height is set inline to the square card height (see render) rather than
+  // flex:1, so the rating row sits just below the card instead of at the screen
+  // bottom.
   viewport: {
-    flex: 1,
     overflow: 'hidden',
     marginBottom: spacing.lg,
     marginLeft: -spacing.md,
@@ -743,6 +751,9 @@ const styles = StyleSheet.create({
     fontFamily: fonts.heading,
     color: colors.text,
     marginBottom: spacing.sm,
+    paddingBottom: spacing.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
   },
   reviewedRow: {
     flexDirection: 'row',

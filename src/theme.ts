@@ -5,13 +5,13 @@ export const colors = {
   bg: '#FAF3E0', // soft paper tint for subtle in-card surfaces / pressed states
   card: '#FFFDF7', // index-card warm white (card front)
   cardBack: '#F2F1EF', // a hair cooler/darker than the front — a faint shadow on the answer side
-  paper: '#F5EDD6', // warm cream notebook page — the backdrop inside a deck (vs. the chalkboard)
+  paper: '#FCFCFA', // white notebook page (a whisper of warmth) — the backdrop inside a deck (vs. the chalkboard)
   paperLine: '#C7D8EC', // ruled horizontal line (light blue) on a card / the paper page
   marginLine: '#E5A2AB', // red/pink margin rule on a card / the paper page
   border: '#E6DCC4', // soft tan card/input border
   // Sticky notes — flashcards inside a deck read as classic yellow Post-Its.
   postit: '#FBEA7E', // pale canary Post-It yellow (kept distinct from the gold `primary` pencil yellow)
-  postitBack: '#F2DD66', // a hair deeper canary for the practice answer (flip-back) side
+  postitBack: '#E6D98A', // the answer (flip-back) side: a touch bluer + desaturated, like the same note in cool shadow
   postitEdge: '#E7D45F', // faint warm edge that defines a Post-It on the cream page
   // Ink.
   text: '#39362F', // graphite

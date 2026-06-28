@@ -27,7 +27,7 @@ const HEADER_TOOLBAR_HEIGHT = 56;
 // A few small tilt angles so the Post-It tiles look hand-stuck rather than
 // grid-aligned. Picked per card by its id (below) so each note keeps the same
 // jaunty angle across re-renders instead of twitching.
-const POSTIT_TILTS = [-2.5, 1.5, -1, 2.5, -2, 1, 3, -1.5];
+const POSTIT_TILTS = [-1.5, 1, -0.5, 1.5, -1, 0.75, 2, -1.25];
 
 /** Stable tilt (deg) for a card's Post-It, hashed from its id so it never
  *  shifts. */
