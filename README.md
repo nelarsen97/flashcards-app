@@ -7,7 +7,9 @@ stored locally on the device in SQLite — no accounts, no internet required.
 ## Features
 
 - Multiple named decks.
-- Add cards manually (front / back) or bulk-import from a CSV file.
+- Add cards manually (front / back), or add many at once on the **Add cards in bulk**
+  screen — paste a list (one card per line) or import a CSV file, with a configurable
+  front/back separator.
 - Practice mode: up to 10 due cards per batch, flip to reveal, then rate it —
   **Hard / Fine / Easy**. Each card carries a **Familiarity** level (a
   Leitner "box"); the rating moves that level, which sets how long the card is put away.
@@ -22,18 +24,22 @@ stored locally on the device in SQLite — no accounts, no internet required.
     Swiping forward past the last card skips it and ends the session.
 - Session summary after each batch, with the option to practice the next 10.
 
-## CSV import format
+## Bulk add / CSV import format
 
-Semicolon-delimited `front;back`, **one card per line, no header row**:
+On the **Add cards in bulk** screen (deck "⋯" menu) you set a front/back
+**separator** (defaults to `-`), then either paste lines or import a CSV/text file.
+**One card per line, no header row**:
 
 ```
-hola;hello
-gato;cat
-buenos días;good morning
+hola - hello
+gato - cat
+buenos días - good morning
 ```
 
-- Each line is split on the **first** `;`, so the back may itself contain semicolons.
-- Blank lines and lines without a `;` are skipped.
+- Each line is split on the **first** occurrence of the separator, so the back may
+  itself contain the separator (e.g. set it to `;` for `hola;hello` files).
+- Surrounding whitespace (around the separator and at line ends) is stripped.
+- Blank lines and lines without the separator are skipped.
 
 ## Run it during development
 
@@ -64,14 +70,15 @@ src/
   app/                         expo-router screens
     _layout.tsx                root Stack navigator
     index.tsx                  decks list (create deck, see due counts)
-    deck/[id]/index.tsx        deck detail (stats, practice, add card, import CSV, rename/delete)
+    deck/[id]/index.tsx        deck detail (stats, practice, add card, bulk add, rename/delete)
     deck/[id]/card.tsx         add / edit a single card (?cardId=... to edit)
+    deck/[id]/bulk.tsx         add many cards at once (paste or CSV file, custom separator)
     deck/[id]/practice.tsx     practice batch + session summary
   db/
     database.ts                opens SQLite, creates schema
     decks.ts                   deck queries
     cards.ts                   card queries + spaced-repetition rules (due_at)
-  lib/csv.ts                   semicolon CSV parser
+  lib/csv.ts                   delimited line parser (custom separator)
   components/Button.tsx        shared button
   theme.ts                     colors / spacing
 ```

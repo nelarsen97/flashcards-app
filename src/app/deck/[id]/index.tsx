@@ -1,5 +1,3 @@
-import * as DocumentPicker from 'expo-document-picker';
-import { File } from 'expo-file-system';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Alert, FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -12,14 +10,12 @@ import { Screen } from '@/components/Screen';
 import {
   Card,
   deleteCards,
-  importCards,
   LEVEL_GROUPS,
   LevelGroup,
   listCards,
   moveCards,
 } from '@/db/cards';
 import { deleteDeck, DeckWithCounts, getDeck, listDecksWithCounts, renameDeck } from '@/db/decks';
-import { parseSemicolonCsv } from '@/lib/csv';
 import { applyCardFilters, CardStatus } from '@/lib/search';
 import { colors, fonts, levelColor, radius, shadow, spacing } from '@/theme';
 
@@ -45,7 +41,6 @@ export default function DeckDetailScreen() {
   const [now, setNow] = useState(0);
   const [renaming, setRenaming] = useState(false);
   const [draftName, setDraftName] = useState('');
-  const [importing, setImporting] = useState(false);
 
   // Live card search: narrows the list as the user types (no submit).
   const [query, setQuery] = useState('');
@@ -128,33 +123,6 @@ export default function DeckDetailScreen() {
         },
       },
     ]);
-  }
-
-  async function handleImport() {
-    if (importing) return;
-    setImporting(true);
-    try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: ['text/csv', 'text/comma-separated-values', 'text/plain', '*/*'],
-        copyToCacheDirectory: true,
-      });
-      if (result.canceled || !result.assets?.[0]) return;
-
-      const text = await new File(result.assets[0].uri).text();
-      const rows = parseSemicolonCsv(text);
-      if (rows.length === 0) {
-        Alert.alert('Nothing imported', 'No valid "front;back" lines were found in that file.');
-        return;
-      }
-      const count = await importCards(deckId, rows);
-      load();
-      Alert.alert('Import complete', `Imported ${count} ${count === 1 ? 'card' : 'cards'}.`);
-    } catch (e) {
-      console.error(e);
-      Alert.alert('Import failed', 'Could not read that file. Make sure it is a text/CSV file.');
-    } finally {
-      setImporting(false);
-    }
   }
 
   function startSelecting(initialId?: number) {
@@ -476,17 +444,7 @@ export default function DeckDetailScreen() {
               }}
               accessibilityRole="button"
             >
-              <Text style={styles.menuItemText}>Bulk add cards</Text>
-            </Pressable>
-            <Pressable
-              style={({ pressed }) => [styles.menuItem, styles.menuDivider, pressed && styles.pressed]}
-              onPress={() => {
-                setMenuVisible(false);
-                handleImport();
-              }}
-              accessibilityRole="button"
-            >
-              <Text style={styles.menuItemText}>Import CSV</Text>
+              <Text style={styles.menuItemText}>Add cards in bulk</Text>
             </Pressable>
             <Pressable
               style={({ pressed }) => [styles.menuItem, styles.menuDivider, pressed && styles.pressed]}

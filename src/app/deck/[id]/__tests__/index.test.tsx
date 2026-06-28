@@ -84,7 +84,7 @@ describe('DeckDetailScreen', () => {
     await screen.findByText('front-1');
 
     await fireEvent.press(screen.getByLabelText('Deck options'));
-    await fireEvent.press(screen.getByText('Bulk add cards'));
+    await fireEvent.press(screen.getByText('Add cards in bulk'));
 
     expect(mockPush).toHaveBeenCalledWith('/deck/1/bulk');
   });
