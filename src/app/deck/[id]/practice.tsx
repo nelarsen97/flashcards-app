@@ -94,10 +94,11 @@ export default function PracticeScreen() {
   // How many due cards are left after this batch — sizes the next round and its
   // button label (capped at BATCH_SIZE).
   const [remainingDue, setRemainingDue] = useState(0);
-  // True while a rating's DB write is in flight, so the Hard/Good/Easy buttons
-  // disable themselves and a fast double-tap can't rate the same card twice (or
-  // rate during the slide to the next card).
-  const [isRating, setIsRating] = useState(false);
+  // Guards against a fast double-tap rating the same card twice (or rating during
+  // the slide to the next card). A ref, not state, so the guard is synchronous and
+  // never re-renders — the buttons keep their look instead of flashing disabled
+  // mid-tap. The actual de-dupe is here in the handler, not a visual disable.
+  const ratingRef = useRef(false);
 
   // Inline card editing. `editing` is the card whose front/back is open in the
   // modal (null = closed); the drafts hold the in-progress text. Tracking the
@@ -249,8 +250,8 @@ export default function PracticeScreen() {
 
   async function handleRate(level: Rating) {
     const card = batch[index];
-    if (!card || isRating) return;
-    setIsRating(true);
+    if (!card || ratingRef.current) return;
+    ratingRef.current = true;
     try {
       // Rate from the card's original level (its loaded value, never mutated), so
       // a re-rate after swiping back replaces the earlier rating instead of
@@ -261,7 +262,7 @@ export default function PracticeScreen() {
       if (index + 1 < batch.length) goTo(index + 1);
       else endSession();
     } finally {
-      setIsRating(false);
+      ratingRef.current = false;
     }
   }
 
@@ -406,10 +407,25 @@ export default function PracticeScreen() {
         ) : null}
       </View>
 
+      {/* Each rating button stretches to fill its own flex slot rather than
+          carrying `flex: 1` itself. On Android's New Architecture (Fabric) a
+          touchable that sizes itself with flex *and* has horizontal padding *and*
+          an outer margin (the row `gap`) has its hit-rect collapse toward the
+          centered label — so only taps near the "Hard"/"Good"/"Easy" text fire.
+          This is the horizontal twin of the vertical collapse fixed in
+          components/Button.tsx (see facebook/react-native#53797): moving the flex
+          and the gap onto plain wrapper Views leaves each button a clean,
+          fully-pressable box. */}
       <View style={styles.ratingRow}>
-        <Button title="Hard" color={colors.hard} style={styles.ratingBtn} disabled={isRating} onPress={() => handleRate('hard')} />
-        <Button title="Good" color={colors.good} style={styles.ratingBtn} disabled={isRating} onPress={() => handleRate('fine')} />
-        <Button title="Easy" color={colors.easy} style={styles.ratingBtn} disabled={isRating} onPress={() => handleRate('easy')} />
+        <View style={styles.ratingSlot}>
+          <Button title="Hard" color={colors.hard} style={styles.ratingBtn} onPress={() => handleRate('hard')} />
+        </View>
+        <View style={styles.ratingSlot}>
+          <Button title="Good" color={colors.good} style={styles.ratingBtn} onPress={() => handleRate('fine')} />
+        </View>
+        <View style={styles.ratingSlot}>
+          <Button title="Easy" color={colors.easy} style={styles.ratingBtn} onPress={() => handleRate('easy')} />
+        </View>
       </View>
       <View style={styles.flex1} />
 
@@ -734,7 +750,10 @@ const styles = StyleSheet.create({
   pencilIcon: { fontSize: 24 },
   faceText: { fontSize: 30, fontFamily: fonts.heading, color: colors.text, textAlign: 'center' },
   ratingRow: { flexDirection: 'row', gap: spacing.xs },
-  ratingBtn: { flex: 1, paddingHorizontal: spacing.xs },
+  // The flex lives on a plain wrapper; the button just stretches to fill it (see
+  // the render comment) so its touch target spans the whole button on Android.
+  ratingSlot: { flex: 1 },
+  ratingBtn: { paddingHorizontal: spacing.xs },
   summaryCard: {
     backgroundColor: colors.card,
     borderWidth: 1,
