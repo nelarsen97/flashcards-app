@@ -40,6 +40,9 @@ const SLIDE_MS = 250;
 const CARD_PEEK = spacing.lg;
 const CARD_GAP = spacing.md;
 const CARD_INSET = CARD_PEEK + CARD_GAP;
+// Card height as a multiple of its width — a little taller than square (a Post-It
+// with room to write), without going back to the full-height portrait card.
+const CARD_ASPECT = 1.25;
 
 // The track travel per card: the viewport minus a peek + gap on each side. Marked
 // a worklet so the pan gesture (UI thread) and the JS-thread settle/layout paths
@@ -358,14 +361,17 @@ export default function PracticeScreen() {
       else runOnJS(settleBack)();
     });
 
-  // Size each card to a square off the measured width — the classic Post-It
-  // shape — rather than filling the whole column height. The viewport takes this
-  // height (below), so the rating row rises to sit just under the shorter card.
+  // Size each card off the measured width — a Post-It a little taller than square
+  // (CARD_ASPECT) rather than filling the whole column height. The viewport takes
+  // this height (below), and a flex spacer above pushes the card + rating row
+  // down toward the bottom of the screen.
   const cardW = width > 0 ? strideFor(width) - CARD_GAP : 0;
-  const cardH = cardW;
+  const cardH = cardW * CARD_ASPECT;
 
   return (
     <Screen style={styles.container} bottomOffset={spacing.md} surface="paper" title={title} onBack>
+      {/* Pushes the card + rating row down toward the bottom of the screen. */}
+      <View style={styles.flex1} />
       <Text style={styles.progress}>
         {index + 1} / {batch.length}
       </Text>

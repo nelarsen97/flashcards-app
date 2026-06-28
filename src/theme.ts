@@ -11,7 +11,7 @@ export const colors = {
   border: '#E6DCC4', // soft tan card/input border
   // Sticky notes — flashcards inside a deck read as classic yellow Post-Its.
   postit: '#FBEA7E', // pale canary Post-It yellow (kept distinct from the gold `primary` pencil yellow)
-  postitBack: '#E6D98A', // the answer (flip-back) side: a touch bluer + desaturated, like the same note in cool shadow
+  postitBack: '#E8D15A', // the answer (flip-back) side: the same canary in shadow — darker, still yellow (not greenish)
   postitEdge: '#E7D45F', // faint warm edge that defines a Post-It on the cream page
   // Ink.
   text: '#39362F', // graphite

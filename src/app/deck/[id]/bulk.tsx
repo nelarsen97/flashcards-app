@@ -106,7 +106,7 @@ export default function BulkAddScreen() {
           autoFocus
           autoCapitalize="none"
           autoCorrect={false}
-          placeholder={`anstendig ${separator} decent\nuventet ${separator} unexpected\nå sveise ${separator} to weld`}
+          placeholder={`uventet ${separator} unexpected\nå sveise ${separator} to weld`}
           placeholderTextColor={colors.textMuted}
         />
         <Text style={styles.count}>

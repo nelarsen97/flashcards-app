@@ -37,7 +37,7 @@ describe('BulkAddScreen', () => {
 
     // Until there's valid input, the count nudges the user and Add is a no-op.
     await fireEvent.changeText(
-      screen.getByPlaceholderText(/anstendig/),
+      screen.getByPlaceholderText(/uventet/),
       'anstendig - decent\nuventet - unexpected'
     );
     expect(screen.getByText('2 cards will be added.')).toBeTruthy();
@@ -55,7 +55,7 @@ describe('BulkAddScreen', () => {
     const screen = await render(<BulkAddScreen />);
 
     await fireEvent.changeText(screen.getByLabelText('Separator'), ';');
-    await fireEvent.changeText(screen.getByPlaceholderText(/anstendig/), 'hund;dog');
+    await fireEvent.changeText(screen.getByPlaceholderText(/uventet/), 'hund;dog');
 
     expect(screen.getByText('1 card will be added.')).toBeTruthy();
 
