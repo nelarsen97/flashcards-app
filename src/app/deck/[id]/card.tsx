@@ -119,7 +119,7 @@ export default function CardScreen() {
   }
 
   return (
-    <Screen title={editingId != null ? 'Edit card' : 'Add card'} onBack>
+    <Screen surface="paper" title={editingId != null ? 'Edit card' : 'Add card'} onBack>
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.container}
@@ -168,7 +168,7 @@ const styles = StyleSheet.create({
   // its end clears the nav bar via the Screen's safe-area inset.
   scroll: { flex: 1 },
   container: { padding: spacing.md, gap: spacing.sm },
-  label: { fontSize: 18, fontFamily: fonts.heading, color: colors.chalk, marginTop: spacing.sm },
+  label: { fontSize: 18, fontFamily: fonts.heading, color: colors.text, marginTop: spacing.sm },
   input: {
     backgroundColor: colors.card,
     borderWidth: 1,

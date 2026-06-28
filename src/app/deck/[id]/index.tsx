@@ -234,6 +234,7 @@ export default function DeckDetailScreen() {
     <Screen
       style={styles.container}
       bottomOffset={spacing.md}
+      surface="paper"
       title={selecting ? 'Select cards' : name || 'Deck'}
       onBack
       headerRight={
@@ -676,7 +677,7 @@ const styles = StyleSheet.create({
   container: { paddingHorizontal: spacing.md, paddingTop: spacing.sm },
   flex1: { flex: 1 },
   headerButton: { paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
-  headerButtonIcon: { fontSize: 24, color: colors.chalk, fontWeight: '700', lineHeight: 24 },
+  headerButtonIcon: { fontSize: 24, color: colors.text, fontWeight: '700', lineHeight: 24 },
   renameRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md, flexWrap: 'wrap' },
   input: {
     flex: 1,
@@ -749,17 +750,19 @@ const styles = StyleSheet.create({
   list: { flex: 1 },
   listContent: { gap: spacing.sm, paddingBottom: spacing.sm },
   cardColumn: { gap: spacing.sm },
-  empty: { textAlign: 'center', color: colors.chalk, marginTop: spacing.lg, fontFamily: fonts.body },
+  empty: { textAlign: 'center', color: colors.text, marginTop: spacing.lg, fontFamily: fonts.body },
   emptyFilter: { gap: spacing.md, alignItems: 'center' },
   // Two-column grid tile. maxWidth caps a lone trailing card at half width so
   // it lines up with the column above instead of stretching across the row.
+  // A yellow Post-It tile — sticky-note yellow with a faint warm edge and barely
+  // rounded corners so it reads as a square sticky note, not a rounded card.
   cardCell: {
     flex: 1,
     maxWidth: '50%',
-    backgroundColor: colors.card,
+    backgroundColor: colors.postit,
     borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
+    borderColor: colors.postitEdge,
+    borderRadius: radius.sm,
     padding: spacing.md,
     ...shadow.card,
   },
@@ -772,7 +775,7 @@ const styles = StyleSheet.create({
   dueDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.ferrule },
   levelBadge: { paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: radius.sm },
   levelText: { color: colors.text, fontSize: 12, fontFamily: fonts.bodyBold },
-  selectionCount: { fontSize: 15, fontFamily: fonts.bodyBold, color: colors.chalk, textAlign: 'center' },
+  selectionCount: { fontSize: 15, fontFamily: fonts.bodyBold, color: colors.text, textAlign: 'center' },
   checkbox: {
     width: 24,
     height: 24,

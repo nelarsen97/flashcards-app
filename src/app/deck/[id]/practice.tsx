@@ -3,7 +3,7 @@
    React Compiler immutability rule doesn't model that idiom. */
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ReactNode, useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Modal, Platform, Pressable, ScrollView, StyleProp, StyleSheet, Text, TextInput, useWindowDimensions, View, ViewStyle } from 'react-native';
+import { ActivityIndicator, Modal, Platform, Pressable, ScrollView, StyleProp, StyleSheet, Text, TextInput, View, ViewStyle } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   DerivedValue,
@@ -264,7 +264,7 @@ export default function PracticeScreen() {
 
   if (phase === 'loading') {
     return (
-      <Screen style={styles.centered} title={title} onBack>
+      <Screen style={styles.centered} surface="paper" title={title} onBack>
         <ActivityIndicator color={colors.ferrule} />
       </Screen>
     );
@@ -289,7 +289,7 @@ export default function PracticeScreen() {
       return { id: card.id, front: card.front, before, after };
     });
     return (
-      <Screen style={styles.container} bottomOffset={spacing.md} title="Session summary" onBack>
+      <Screen style={styles.container} bottomOffset={spacing.md} surface="paper" title="Session summary" onBack>
         <View style={styles.summaryCard}>
           <Text style={styles.summaryTitle}>
             {batch.length === 0 ? 'Nothing to practice' : 'Session complete'}
@@ -359,7 +359,7 @@ export default function PracticeScreen() {
     });
 
   return (
-    <Screen style={styles.container} bottomOffset={spacing.md} title={title} onBack>
+    <Screen style={styles.container} bottomOffset={spacing.md} surface="paper" title={title} onBack>
       <Text style={styles.progress}>
         {index + 1} / {batch.length}
       </Text>
@@ -554,7 +554,6 @@ function CardFace({
       style={[styles.face, back && styles.faceBack, faceStyle]}
       pointerEvents={active ? 'auto' : 'none'}
     >
-      <CardRules />
       <CardCorner gesture={pencilGesture} style={styles.pencil}>
         <EditButton card={card} onEdit={onEdit} />
       </CardCorner>
@@ -563,23 +562,6 @@ function CardFace({
       </CardCorner>
       <Text style={styles.faceText}>{text}</Text>
     </Animated.View>
-  );
-}
-
-// The ruled-paper lines + red margin rule drawn inside a card face, so each
-// flashcard reads like a lined index card. Over-draws past the face height and
-// is clipped by the face's overflow:hidden; sits behind the text and buttons and
-// never intercepts touches.
-function CardRules() {
-  const { height } = useWindowDimensions();
-  const count = Math.ceil(height / 30);
-  return (
-    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-      {Array.from({ length: count }, (_, i) => (
-        <View key={i} style={[styles.cardLine, { top: (i + 1) * 30 }]} />
-      ))}
-      <View style={styles.cardMargin} />
-    </View>
   );
 }
 
@@ -671,7 +653,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 16,
     fontFamily: fonts.bodyBold,
-    color: colors.chalk,
+    color: colors.text,
     marginBottom: spacing.md,
   },
   // Clips the off-screen cards to the viewport. The negative side margins cancel
@@ -697,6 +679,7 @@ const styles = StyleSheet.create({
   cardSlot: {
     height: '100%',
   },
+  // A blank yellow Post-It: sticky-note yellow with a faint warm edge.
   face: {
     position: 'absolute',
     top: 0,
@@ -705,9 +688,9 @@ const styles = StyleSheet.create({
     bottom: 0,
     backfaceVisibility: 'hidden',
     overflow: 'hidden',
-    backgroundColor: colors.card,
+    backgroundColor: colors.postit,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.postitEdge,
     borderRadius: radius.lg,
     padding: spacing.lg,
     alignItems: 'center',
@@ -715,25 +698,9 @@ const styles = StyleSheet.create({
     ...shadow.card,
   },
   faceBack: {
-    // A desaturated, cooler card front — reads as the front in shadow, marking
-    // the answer side without the distraction of a different hue.
-    backgroundColor: colors.cardBack,
-  },
-  // Faint ruled lines + red margin painted across a card face (index-card look).
-  cardLine: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.paperLine,
-  },
-  cardMargin: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    left: spacing.xl,
-    width: 1.5,
-    backgroundColor: colors.marginLine,
+    // A hair deeper canary — reads as the same note in shadow, marking the answer
+    // side without the distraction of a different hue.
+    backgroundColor: colors.postitBack,
   },
   speaker: { position: 'absolute', bottom: spacing.md, right: spacing.md },
   pencil: { position: 'absolute', bottom: spacing.md, left: spacing.md },
@@ -774,7 +741,7 @@ const styles = StyleSheet.create({
   reviewedHeading: {
     fontSize: 18,
     fontFamily: fonts.heading,
-    color: colors.chalk,
+    color: colors.text,
     marginBottom: spacing.sm,
   },
   reviewedRow: {
@@ -786,9 +753,9 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
     gap: spacing.sm,
   },
-  reviewedFront: { flex: 1, fontSize: 16, fontFamily: fonts.bodyMedium, color: colors.chalk },
+  reviewedFront: { flex: 1, fontSize: 16, fontFamily: fonts.bodyMedium, color: colors.text },
   reviewedChange: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  reviewedArrow: { fontSize: 14, fontFamily: fonts.bodyBold, color: colors.chalk },
+  reviewedArrow: { fontSize: 14, fontFamily: fonts.bodyBold, color: colors.text },
   levelBadge: {
     paddingHorizontal: spacing.sm,
     paddingVertical: 2,
