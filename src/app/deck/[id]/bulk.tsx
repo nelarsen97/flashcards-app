@@ -1,3 +1,5 @@
+import * as DocumentPicker from 'expo-document-picker';
+import { File } from 'expo-file-system';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -5,10 +7,12 @@ import { Alert, ScrollView, StyleSheet, Text, TextInput, View } from 'react-nati
 import { Button } from '@/components/Button';
 import { Screen } from '@/components/Screen';
 import { importCards } from '@/db/cards';
-import { parseDashLines } from '@/lib/csv';
+import { parseDelimited } from '@/lib/csv';
 import { colors, fonts, radius, spacing } from '@/theme';
 
-const PLACEHOLDER = 'anstendig - decent\nuventet - unexpected\nå sveise - to weld';
+// The character that splits each line into front/back. User-editable; defaults to
+// "-" to match the paste example, but works the same for ";"-delimited CSV files.
+const DEFAULT_SEPARATOR = '-';
 
 export default function BulkAddScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -16,12 +20,14 @@ export default function BulkAddScreen() {
   const router = useRouter();
 
   const [text, setText] = useState('');
+  const [separator, setSeparator] = useState(DEFAULT_SEPARATOR);
   const [saving, setSaving] = useState(false);
+  const [importing, setImporting] = useState(false);
 
-  // Live preview of how many lines will turn into cards.
-  const rows = parseDashLines(text);
+  // Live preview of how many pasted lines will turn into cards.
+  const rows = parseDelimited(text, separator);
 
-  async function handleSave() {
+  async function handleAdd() {
     if (rows.length === 0 || saving) return;
     setSaving(true);
     try {
@@ -36,16 +42,62 @@ export default function BulkAddScreen() {
     }
   }
 
+  // Same parser, but the lines come from a picked CSV/text file instead of the box.
+  async function handleImportFile() {
+    if (importing) return;
+    setImporting(true);
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['text/csv', 'text/comma-separated-values', 'text/plain', '*/*'],
+        copyToCacheDirectory: true,
+      });
+      if (result.canceled || !result.assets?.[0]) return;
+
+      const fileText = await new File(result.assets[0].uri).text();
+      const fileRows = parseDelimited(fileText, separator);
+      if (fileRows.length === 0) {
+        Alert.alert(
+          'Nothing imported',
+          `No valid “front ${separator} back” lines were found in that file.`
+        );
+        return;
+      }
+      const count = await importCards(deckId, fileRows);
+      router.back();
+      Alert.alert('Import complete', `Imported ${count} ${count === 1 ? 'card' : 'cards'}.`);
+    } catch (e) {
+      console.error(e);
+      Alert.alert('Import failed', 'Could not read that file. Make sure it is a text/CSV file.');
+    } finally {
+      setImporting(false);
+    }
+  }
+
   return (
-    <Screen title="Bulk add cards" onBack>
+    <Screen title="Add cards in bulk" onBack>
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.container}
         keyboardShouldPersistTaps="handled"
       >
         <Text style={styles.hint}>
-          One card per line. Separate the front and back with a “-”.
+          One card per line — front and back split by the separator below. Paste them in, or
+          import a CSV file in the same format.
         </Text>
+
+        <View style={styles.sepRow}>
+          <Text style={styles.sepLabel}>Separator</Text>
+          <TextInput
+            style={styles.sepInput}
+            value={separator}
+            onChangeText={setSeparator}
+            autoCapitalize="none"
+            autoCorrect={false}
+            maxLength={5}
+            accessibilityLabel="Separator"
+          />
+        </View>
+
         <TextInput
           style={styles.input}
           value={text}
@@ -54,21 +106,27 @@ export default function BulkAddScreen() {
           autoFocus
           autoCapitalize="none"
           autoCorrect={false}
-          placeholder={PLACEHOLDER}
+          placeholder={`anstendig ${separator} decent\nuventet ${separator} unexpected\nå sveise ${separator} to weld`}
           placeholderTextColor={colors.textMuted}
         />
         <Text style={styles.count}>
           {rows.length === 0
-            ? 'No cards yet — add lines like “front - back”.'
+            ? `No cards yet — add lines like “front ${separator} back”.`
             : `${rows.length} ${rows.length === 1 ? 'card' : 'cards'} will be added.`}
         </Text>
 
         <View style={styles.actions}>
           <Button
             title="Add cards"
-            onPress={handleSave}
+            onPress={handleAdd}
             disabled={rows.length === 0}
             loading={saving}
+          />
+          <Button
+            title="Import from CSV file"
+            variant="secondary"
+            onPress={handleImportFile}
+            loading={importing}
           />
         </View>
       </ScrollView>
@@ -82,6 +140,20 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   container: { padding: spacing.md, gap: spacing.sm },
   hint: { fontSize: 15, fontFamily: fonts.body, color: colors.chalk, lineHeight: 22 },
+  sepRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.xs },
+  sepLabel: { fontSize: 15, fontFamily: fonts.bodyMedium, color: colors.chalk },
+  sepInput: {
+    width: 64,
+    textAlign: 'center',
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    paddingVertical: spacing.sm,
+    fontSize: 16,
+    fontFamily: fonts.body,
+    color: colors.text,
+  },
   input: {
     backgroundColor: colors.card,
     borderWidth: 1,
