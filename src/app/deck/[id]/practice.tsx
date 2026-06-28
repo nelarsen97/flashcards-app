@@ -3,7 +3,7 @@
    React Compiler immutability rule doesn't model that idiom. */
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ReactNode, useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Modal, Platform, Pressable, ScrollView, StyleProp, StyleSheet, Text, TextInput, View, ViewStyle } from 'react-native';
+import { ActivityIndicator, Modal, Platform, Pressable, ScrollView, StyleProp, StyleSheet, Text, TextInput, useWindowDimensions, View, ViewStyle } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   DerivedValue,
@@ -114,6 +114,14 @@ export default function PracticeScreen() {
   // stride (`width - CARD_PEEK`) so the next card peeks past the gap; the track
   // slides by animating its translateX to the current card's resting offset.
   const [width, setWidth] = useState(0);
+  // The viewport spans the full window width (its negative side margins cancel the
+  // screen padding), so the window width gives the card's size without waiting for
+  // a layout pass. We use it for the card *height* below so the viewport is the
+  // same height from the first frame of every batch — otherwise the first batch
+  // starts at width 0 (zero-height viewport) and grows, while later batches enter
+  // at full height, and that mismatch drifts the card's vertical position when you
+  // continue. The horizontal carousel math still uses the measured `width`.
+  const { width: winW } = useWindowDimensions();
   // The track's horizontal offset, written imperatively so it can follow the
   // finger during a drag and animate to rest on release. Resting offset for card
   // i is restOffset(i, width); the end-of-batch slide parks it one stride past the
@@ -362,17 +370,16 @@ export default function PracticeScreen() {
       else runOnJS(settleBack)();
     });
 
-  // Size each card off the measured width — a Post-It a little taller than square
-  // (CARD_ASPECT) rather than filling the whole column height. The viewport takes
-  // this height (below), and a flex spacer above pushes the card + rating row
-  // down toward the bottom of the screen.
+  // Card height comes from the window width (stable from the first frame, identical
+  // every batch) so the viewport never resizes mid-session and the card stays put
+  // when you continue to the next batch. A Post-It a little taller than square
+  // (CARD_ASPECT). The card's *width* still comes from the measured viewport (the
+  // carousel's horizontal math), guarded until the first layout pass.
+  const cardH = (strideFor(winW) - CARD_GAP) * CARD_ASPECT;
   const cardW = width > 0 ? strideFor(width) - CARD_GAP : 0;
-  const cardH = cardW * CARD_ASPECT;
 
   return (
-    <Screen style={styles.container} bottomOffset={spacing.md} surface="paper" title={title} onBack>
-      {/* Equal spacers above and below center the card + rating row vertically. */}
-      <View style={styles.flex1} />
+    <Screen style={[styles.container, styles.practiceContainer]} bottomOffset={spacing.md} surface="paper" title={title} onBack>
       <Text style={styles.progress}>
         {index + 1} / {batch.length}
       </Text>
@@ -426,7 +433,6 @@ export default function PracticeScreen() {
           <Button title="Easy" color={colors.easy} style={styles.ratingBtn} onPress={() => handleRate('easy')} />
         </View>
       </View>
-      <View style={styles.flex1} />
 
       <Modal
         visible={editing !== null}
@@ -677,6 +683,9 @@ function SummaryStat({ label, value, color }: { label: string; value: number; co
 const styles = StyleSheet.create({
   // Bottom padding is owned by <Screen> (safe-area inset + spacing.md offset).
   container: { paddingHorizontal: spacing.md, paddingTop: spacing.md },
+  // Practice phase only: center the progress + card + rating row as a group — one
+  // deterministic mechanism instead of a pair of flex spacers.
+  practiceContainer: { justifyContent: 'center' },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   progress: {
     textAlign: 'center',
