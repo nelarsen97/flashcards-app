@@ -28,6 +28,17 @@ import { colors, fonts, levelColor, radius, shadow, spacing } from '@/theme';
 // just below the header.
 const HEADER_TOOLBAR_HEIGHT = 56;
 
+// A few small tilt angles so the Post-It tiles look hand-stuck rather than
+// grid-aligned. Picked per card by its id (below) so each note keeps the same
+// jaunty angle across re-renders instead of twitching.
+const POSTIT_TILTS = [-2.5, 1.5, -1, 2.5, -2, 1, 3, -1.5];
+
+/** Stable tilt (deg) for a card's Post-It, hashed from its id so it never
+ *  shifts. */
+function postitTilt(id: number): number {
+  return POSTIT_TILTS[Math.abs(id) % POSTIT_TILTS.length];
+}
+
 export default function DeckDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const deckId = Number(id);
@@ -290,7 +301,11 @@ export default function DeckDetailScreen() {
           const isSelected = selectedIds.has(item.id);
           return (
             <Pressable
-              style={({ pressed }) => [styles.cardCell, pressed && styles.pressed]}
+              style={({ pressed }) => [
+                styles.cardCell,
+                { transform: [{ rotate: `${postitTilt(item.id)}deg` }] },
+                pressed && styles.pressed,
+              ]}
               onPress={() =>
                 selecting
                   ? toggleSelected(item.id)
