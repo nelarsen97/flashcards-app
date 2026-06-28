@@ -371,9 +371,8 @@ export default function PracticeScreen() {
 
   return (
     <Screen style={styles.container} bottomOffset={spacing.md} surface="paper" title={title} onBack>
-      {/* Spacers above (2) and below (1) park the card + rating row in the lower
-          middle of the screen rather than at the very top or bottom. */}
-      <View style={styles.spacerTop} />
+      {/* Equal spacers above and below center the card + rating row vertically. */}
+      <View style={styles.flex1} />
       <Text style={styles.progress}>
         {index + 1} / {batch.length}
       </Text>
@@ -801,9 +800,6 @@ const styles = StyleSheet.create({
   },
   levelText: { fontSize: 12, fontFamily: fonts.bodyBold, color: colors.text },
   flex1: { flex: 1 },
-  // Top spacer takes twice the slack of the bottom one, so the card + rating row
-  // settle in the lower middle of the screen.
-  spacerTop: { flex: 2 },
   modalBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.4)',
