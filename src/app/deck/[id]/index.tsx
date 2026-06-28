@@ -472,6 +472,16 @@ export default function DeckDetailScreen() {
               style={({ pressed }) => [styles.menuItem, styles.menuDivider, pressed && styles.pressed]}
               onPress={() => {
                 setMenuVisible(false);
+                router.push(`/deck/${deckId}/bulk`);
+              }}
+              accessibilityRole="button"
+            >
+              <Text style={styles.menuItemText}>Bulk add cards</Text>
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [styles.menuItem, styles.menuDivider, pressed && styles.pressed]}
+              onPress={() => {
+                setMenuVisible(false);
                 handleImport();
               }}
               accessibilityRole="button"
