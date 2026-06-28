@@ -370,8 +370,9 @@ export default function PracticeScreen() {
 
   return (
     <Screen style={styles.container} bottomOffset={spacing.md} surface="paper" title={title} onBack>
-      {/* Pushes the card + rating row down toward the bottom of the screen. */}
-      <View style={styles.flex1} />
+      {/* Spacers above (2) and below (1) park the card + rating row in the lower
+          middle of the screen rather than at the very top or bottom. */}
+      <View style={styles.spacerTop} />
       <Text style={styles.progress}>
         {index + 1} / {batch.length}
       </Text>
@@ -410,6 +411,7 @@ export default function PracticeScreen() {
         <Button title="Good" color={colors.good} style={styles.ratingBtn} disabled={isRating} onPress={() => handleRate('fine')} />
         <Button title="Easy" color={colors.easy} style={styles.ratingBtn} disabled={isRating} onPress={() => handleRate('easy')} />
       </View>
+      <View style={styles.flex1} />
 
       <Modal
         visible={editing !== null}
@@ -780,6 +782,9 @@ const styles = StyleSheet.create({
   },
   levelText: { fontSize: 12, fontFamily: fonts.bodyBold, color: colors.text },
   flex1: { flex: 1 },
+  // Top spacer takes twice the slack of the bottom one, so the card + rating row
+  // settle in the lower middle of the screen.
+  spacerTop: { flex: 2 },
   modalBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.4)',
