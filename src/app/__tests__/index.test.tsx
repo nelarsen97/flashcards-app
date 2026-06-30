@@ -118,6 +118,11 @@ describe('DecksScreen', () => {
     expect(await findByText('No decks yet. Create one above to get started.')).toBeTruthy();
   });
 
+  it('sketches a chalk cat in the corner of the board', async () => {
+    const { findByLabelText } = await render(<DecksScreen />);
+    expect(await findByLabelText('A cat doodled in chalk')).toBeTruthy();
+  });
+
   it('creates a deck and navigates to it on Add', async () => {
     mockedCreate.mockResolvedValue(99);
     const { getByText, getByPlaceholderText } = await render(<DecksScreen />);

@@ -16,6 +16,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
+import { ChalkCat } from '@/components/ChalkCat';
 import { DraggableDeckList, DECK_ROW_HEIGHT } from '@/components/DraggableDeckList';
 import { PencilButton } from '@/components/PencilButton';
 import { Screen } from '@/components/Screen';
@@ -173,6 +174,11 @@ export default function DecksScreen() {
         </Pressable>
       }
     >
+      {/* A chalk cat curled in the corner of the board. It's rendered first and
+          pinned behind the content (pointerEvents none), so it peeks through the
+          empty floor of the screen without ever covering a deck or a tap. */}
+      <ChalkCat style={styles.cat} />
+
       <View style={styles.newRow}>
         <TextInput
           style={styles.input}
@@ -325,6 +331,9 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xl,
   },
   flex1: { flex: 1 },
+  // The chalk-cat doodle sits on the "floor" in the bottom-right corner, behind
+  // the deck list. It's decorative, so it's allowed to scroll under content.
+  cat: { position: 'absolute', right: spacing.sm, bottom: spacing.md },
   headerButton: { paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
   headerButtonIcon: { fontSize: 24, color: colors.chalk, fontWeight: '700', lineHeight: 24 },
   // Overflow (⋯) menu anchored under the header's top-right corner. The top
